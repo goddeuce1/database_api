@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS posts (
     "message"   TEXT NOT NULL,
     "parent"    INT DEFAULT 0,
     "thread"    INT DEFAULT 0 REFERENCES threads("id"),
-    "path" 	  	BIGINT []
+    "path" 	  	INT []
 );
 
 DROP TABLE IF EXISTS votes CASCADE;
@@ -51,5 +51,3 @@ CREATE TABLE IF NOT EXISTS votes (
     "thread"	INT NOT NULL REFERENCES threads("id"),
     "voice" 	INT NOT NULL
 );
-
-
