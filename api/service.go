@@ -29,6 +29,5 @@ func ServiceStatus(ctx *fasthttp.RequestCtx) {
 //ServiceClear - clear everything in database
 func ServiceClear(ctx *fasthttp.RequestCtx) {
 	_, _ = database.App.DB.Exec("TRUNCATE errors, users, forums, threads, posts, votes")
-
 	mw.SetHeaders(ctx, fasthttp.StatusOK)
 }

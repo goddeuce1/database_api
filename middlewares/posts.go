@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"fmt"
 	"strings"
 
 	"../database"
@@ -118,7 +117,6 @@ func PostIDDetailsGetMiddleware(id, related string) (*map[string]interface{}, *m
 			)
 
 			if err != nil {
-				fmt.Println(err)
 				return nil, models.ErrPostNotFound
 			}
 

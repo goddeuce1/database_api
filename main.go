@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"./database"
@@ -17,6 +16,5 @@ func main() {
 	database.App.OpenConnection(conn)
 	defer database.App.CloseConnection()
 
-	fmt.Println("Starting server...")
 	log.Fatal(fasthttp.ListenAndServe(port, router.Router.Handler))
 }

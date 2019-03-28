@@ -49,7 +49,7 @@ DROP TABLE IF EXISTS votes CASCADE;
 CREATE TABLE IF NOT EXISTS votes (
     "nickname"	CITEXT NOT NULL,
     "thread"	INT NOT NULL REFERENCES threads("id"),
-    "voice" 	INTEGER NOT NULL
+    "voice" 	INT NOT NULL
 );
 
 

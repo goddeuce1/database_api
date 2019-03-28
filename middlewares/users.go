@@ -22,6 +22,8 @@ func UserCreateMiddleware(user *models.User) (models.Users, *models.Error) {
 			return nil, models.ErrGlobal
 		}
 
+		defer conflictRows.Close()
+
 		for conflictRows.Next() {
 			user := models.User{}
 			err := conflictRows.Scan(&user.About, &user.Email, &user.Fullname, &user.Nickname)

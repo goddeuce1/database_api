@@ -1,8 +1,6 @@
 package middlewares
 
 import (
-	"bytes"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -56,7 +54,6 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 	err := row.Scan(&forum, &id)
 
 	if err != nil {
-		fmt.Println(err)
 		return posts, nil
 	}
 
@@ -79,7 +76,7 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 		var id int
 		var timeNow time.Time
 		_ = rows.Scan(&id, &timeNow)
-		index.ID = int64(id)
+		index.ID = id
 		index.Created = timeNow
 
 		_, _ = database.App.DB.Exec(
@@ -125,45 +122,41 @@ func ThreadFindBySlug(slug string) (*models.Thread, *models.Error) {
 //ThreadSlugVoteMiddleware - +-1 vote for thread
 func ThreadSlugVoteMiddleware(vote *models.Vote, slug string) (*models.Thread, *models.Error) {
 	var err error
-
-	prevVoice := &pgtype.Int4{}
+	var getPrevVoice int32
+	nickname := &pgtype.Varchar{}
+	prev := &pgtype.Int4{}
 	threadID := &pgtype.Int4{}
-	threadVotes := &pgtype.Int4{}
-	userNickname := &pgtype.Varchar{}
+	votes := &pgtype.Int4{}
 
 	if id, error := strconv.Atoi(slug); error == nil {
-		err = database.App.DB.QueryRow(ops.SQLSelectThreadAndVoteByID, id, vote.Nickname).Scan(prevVoice, threadID, threadVotes, userNickname)
+		err = database.App.DB.QueryRow(ops.TSVSelectVoteByID, id, vote.Nickname).Scan(threadID, votes, prev, nickname)
 	} else {
-		err = database.App.DB.QueryRow(ops.SQLSelectThreadAndVoteBySlug, slug, vote.Nickname).Scan(prevVoice, threadID, threadVotes, userNickname)
+		err = database.App.DB.QueryRow(ops.TSVSelectVoteBySlug, slug, vote.Nickname).Scan(threadID, votes, prev, nickname)
 	}
+
+	if err != nil || nickname.Status != pgtype.Present || threadID.Status != pgtype.Present {
+		return nil, models.ErrThreadNotFound
+	}
+
+	if prev.Status == pgtype.Present {
+		getPrevVoice = int32(prev.Int)
+		_, err = database.App.DB.Exec(ops.TSVUpdateVote, vote.Voice, threadID.Int, nickname.String)
+	} else {
+		_, err = database.App.DB.Exec(ops.TSVInsertVote, vote.Voice, threadID.Int, nickname.String)
+	}
+
+	getNewVotes := votes.Int + (int32(vote.Voice) - getPrevVoice)
 
 	if err != nil {
 		return nil, models.ErrThreadNotFound
 	}
 
-	if threadID.Status != pgtype.Present || userNickname.Status != pgtype.Present {
-		return nil, models.ErrThreadNotFound
-	}
-
-	var prevVoiceInt int32
-
-	if prevVoice.Status == pgtype.Present {
-		prevVoiceInt = int32(prevVoice.Int)
-		_, err = database.App.DB.Exec(ops.SQLUpdateVote, threadID.Int, userNickname.String, vote.Voice)
-	} else {
-		_, err = database.App.DB.Exec(ops.SQLInsertVote, threadID.Int, userNickname.String, vote.Voice)
-	}
-
-	newVotes := threadVotes.Int + (int32(vote.Voice) - prevVoiceInt)
-
-	if err != nil {
-		return nil, models.ErrThreadNotFound
-	}
-
+	getThreadSlug := &pgtype.Varchar{}
 	thread := &models.Thread{}
-	slugNullable := &pgtype.Varchar{}
-	err = database.App.DB.QueryRow(ops.SQLUpdateThreadVotes, newVotes, threadID.Int).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.Message, slugNullable, &thread.Title, &thread.ID, &thread.Votes)
-	thread.Slug = slugNullable.String
+
+	err = database.App.DB.QueryRow(ops.TSVUpdateVotes, getNewVotes, threadID.Int).Scan(getThreadSlug, &thread.Title, &thread.ID, &thread.Votes, &thread.Author, &thread.Created, &thread.Forum, &thread.Message)
+
+	thread.Slug = getThreadSlug.String
 
 	if err != nil {
 		return nil, models.ErrThreadNotFound
@@ -245,68 +238,69 @@ func ThreadDetailsPostMiddleware(threadUpdate *models.ThreadUpdate, slug string)
 }
 
 //ThreadPostsMiddleware - returns thread posts
-func ThreadPostsMiddleware(slugOrID string, limit, since, sort, desc []byte) (*models.Posts, *models.Error) {
-	thread, err := ThreadFindBySlug(slugOrID)
+func ThreadPostsMiddleware(slug, limit, since, sort, desc string) (*models.Posts, *models.Error) {
+	thread, err := ThreadFindBySlug(slug)
 
 	if err != nil {
 		return nil, models.ErrThreadNotFound
 	}
 
-	var queryRows *pgx.Rows
+	var rows *pgx.Rows
 	var error error
 
-	if since != nil {
-		if bytes.Equal([]byte("true"), desc) {
+	if since != "" {
+		if desc == "true" {
 			switch string(sort) {
 			case "tree":
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsSinceDescLimitTree, thread.ID, since, limit)
+				rows, error = database.App.DB.Query(ops.TPSinceDescLimitTree, thread.ID, since, limit)
 			case "parent_tree":
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsSinceDescLimitParentTree, thread.ID, since, limit)
+				rows, error = database.App.DB.Query(ops.TPSinceDescLimitParentTree, thread.ID, since, limit)
 			default:
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsSinceDescLimitFlat, thread.ID, since, limit)
+				rows, error = database.App.DB.Query(ops.TPSinceDescLimitFlat, thread.ID, since, limit)
 			}
 		} else {
 			switch string(sort) {
 			case "tree":
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsSinceAscLimitTree, thread.ID, since, limit)
+				rows, error = database.App.DB.Query(ops.TPSinceAscLimitTree, thread.ID, since, limit)
 			case "parent_tree":
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsSinceAscLimitParentTree, thread.ID, since, limit)
+				rows, error = database.App.DB.Query(ops.TPSinceAscLimitParentTree, thread.ID, since, limit)
 			default:
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsSinceAscLimitFlat, thread.ID, since, limit)
+				rows, error = database.App.DB.Query(ops.TPSinceAscLimitFlat, thread.ID, since, limit)
 			}
 		}
 	} else {
-		if bytes.Equal([]byte("true"), desc) {
+		if desc == "true" {
 			switch string(sort) {
 			case "tree":
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsDescLimitTree, thread.ID, limit)
+				rows, error = database.App.DB.Query(ops.TPDescLimitTree, thread.ID, limit)
 			case "parent_tree":
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsDescLimitParentTree, thread.ID, limit)
+				rows, error = database.App.DB.Query(ops.TPDescLimitParentTree, thread.ID, limit)
 			default:
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsDescLimitFlat, thread.ID, limit)
+				rows, error = database.App.DB.Query(ops.TPDescLimitFlat, thread.ID, limit)
 			}
 		} else {
 			switch string(sort) {
 			case "tree":
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsAscLimitTree, thread.ID, limit)
+				rows, error = database.App.DB.Query(ops.TPAscLimitTree, thread.ID, limit)
 			case "parent_tree":
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsAscLimitParentTree, thread.ID, limit)
+				rows, error = database.App.DB.Query(ops.TPAscLimitParentTree, thread.ID, limit)
 			default:
-				queryRows, error = database.App.DB.Query(ops.SQLSelectPostsAscLimitFlat, thread.ID, limit)
+				rows, error = database.App.DB.Query(ops.TPAscLimitFlat, thread.ID, limit)
 			}
 		}
 	}
-	defer queryRows.Close()
 
 	if error != nil {
 		return nil, models.ErrGlobal
 	}
 
+	defer rows.Close()
+
 	posts := models.Posts{}
-	for queryRows.Next() {
+	for rows.Next() {
 		post := models.Post{}
 
-		if error = queryRows.Scan(
+		if error = rows.Scan(
 			&post.ID,
 			&post.Author,
 			&post.Parent,

@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -90,7 +89,7 @@ func ForumSlugCreateMiddleware(thread *models.Thread, forum string) (models.Thre
 	}
 
 	threads := models.Threads{}
-	thread.ID = int32(id)
+	thread.ID = id
 
 	threads = append(threads, thread)
 
@@ -164,6 +163,8 @@ func ForumSlugThreadsMiddleware(limit, since, desc, slug string) (models.Threads
 		return nil, models.ErrGlobal
 	}
 
+	defer rows.Close()
+
 	threads := models.Threads{}
 
 	for rows.Next() {
@@ -180,7 +181,6 @@ func ForumSlugThreadsMiddleware(limit, since, desc, slug string) (models.Threads
 		)
 
 		if err != nil {
-			fmt.Println(err)
 			return nil, models.ErrGlobal
 		}
 
@@ -252,6 +252,8 @@ func ForumSlugUsersMiddleware(limit, since, desc, slug string) (models.Users, *m
 		return nil, models.ErrGlobal
 	}
 
+	defer rows.Close()
+
 	users := models.Users{}
 
 	for rows.Next() {
@@ -264,7 +266,6 @@ func ForumSlugUsersMiddleware(limit, since, desc, slug string) (models.Users, *m
 		)
 
 		if err != nil {
-			fmt.Println(err)
 			return nil, models.ErrGlobal
 		}
 

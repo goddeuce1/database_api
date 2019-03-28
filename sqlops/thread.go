@@ -1,43 +1,42 @@
 package middlewares
 
-//SQLInsertVote -
-const SQLInsertVote = `
-	INSERT INTO votes (thread, nickname, voice) 
+//TSVInsertVote - inserts vote
+const TSVInsertVote = `
+	INSERT INTO votes ("voice", "thread", "nickname") 
 	VALUES ($1, $2, $3)
 	`
 
-//SQLUpdateVote -
-const SQLUpdateVote = `
+//TSVUpdateVote - updates vote
+const TSVUpdateVote = `
 	UPDATE votes SET 
-	voice = $3
-	WHERE thread = $1 
-	AND nickname = $2
+	"voice" = $1
+	WHERE "thread" = $2 AND "nickname" = $3
 	`
 
-//SQLSelectThreadAndVoteByID -
-const SQLSelectThreadAndVoteByID = `
-	SELECT votes.voice, threads.id, threads.votes, u.nickname
-	FROM (SELECT 1) s
+//TSVSelectVoteByID - selects vote by id
+const TSVSelectVoteByID = `
+	SELECT threads.id, threads.votes, votes.voice, usr.nickname
+	FROM (SELECT 1) AS tmp_table
 	LEFT JOIN threads ON threads.id = $1
-	LEFT JOIN "users" u ON u.nickname = $2
-	LEFT JOIN votes ON threads.id = votes.thread AND u.nickname = votes.nickname
+	LEFT JOIN "users" AS usr ON usr.nickname = $2
+	LEFT JOIN votes ON threads.id = votes.thread AND usr.nickname = votes.nickname
 	`
 
-//SQLSelectThreadAndVoteBySlug -
-const SQLSelectThreadAndVoteBySlug = `
-	SELECT votes.voice, threads.id, threads.votes, u.nickname
-	FROM (SELECT 1) s
+//TSVSelectVoteBySlug - selects vote by slug
+const TSVSelectVoteBySlug = `
+	SELECT threads.id, threads.votes, votes.voice, usr.nickname
+	FROM (SELECT 1) AS tmp_table
 	LEFT JOIN threads ON threads.slug = $1
-	LEFT JOIN users as u ON u.nickname = $2
-	LEFT JOIN votes ON threads.id = votes.thread AND u.nickname = votes.nickname
+	LEFT JOIN users AS usr ON usr.nickname = $2
+	LEFT JOIN votes ON threads.id = votes.thread AND usr.nickname = votes.nickname
 	`
 
-//SQLUpdateThreadVotes -
-const SQLUpdateThreadVotes = `
+//TSVUpdateVotes - updates votes
+const TSVUpdateVotes = `
 	UPDATE threads SET
-	votes = $1
-	WHERE id = $2
-	RETURNING author, created, forum, "message" , slug, title, id, votes
+	"votes" = $1
+	WHERE "id" = $2
+	RETURNING "slug", "title", "id", "votes", "author", "created", "forum", "message"
 	`
 
 //TCMInsertValues - used for ThreadCreateMiddleware as request text
@@ -124,131 +123,131 @@ const TCMUpdatePath = `
 	WHERE "id" = $2
 	`
 
-//SQLSelectPostsSinceDescLimitTree -
-const SQLSelectPostsSinceDescLimitTree = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPSinceDescLimitTree - since desc limit tree
+const TPSinceDescLimitTree = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
-	WHERE thread = $1 AND (path < (SELECT path FROM posts WHERE id = $2::TEXT::INTEGER))
-	ORDER BY path DESC
+	WHERE "thread" = $1 AND ("path" < (SELECT "path" FROM posts WHERE "id" = $2::TEXT::INTEGER))
+	ORDER BY "path" DESC
 	LIMIT $3::TEXT::INTEGER
 	`
 
-//SQLSelectPostsSinceDescLimitParentTree -
-const SQLSelectPostsSinceDescLimitParentTree = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPSinceDescLimitParentTree - since desc limit parent tree
+const TPSinceDescLimitParentTree = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
 	WHERE path[1] IN (
-		SELECT id
+		SELECT "id"
 		FROM posts
-		WHERE thread = $1 AND parent = 0 AND id < (SELECT path[1] FROM posts WHERE id = $2::TEXT::INTEGER)
-		ORDER BY id DESC
+		WHERE "thread" = $1 AND "parent" = 0 AND "id" < (SELECT path[1] FROM posts WHERE "id" = $2::TEXT::INTEGER)
+		ORDER BY "id" DESC
 		LIMIT $3::TEXT::INTEGER
 	)
-	ORDER BY path
+	ORDER BY "path"
 	`
 
-//SQLSelectPostsSinceDescLimitFlat -
-const SQLSelectPostsSinceDescLimitFlat = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPSinceDescLimitFlat - since desc limit flat
+const TPSinceDescLimitFlat = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
-	WHERE thread = $1 AND id < $2::TEXT::INTEGER
-	ORDER BY id DESC
+	WHERE "thread" = $1 AND "id" < $2::TEXT::INTEGER
+	ORDER BY "id" DESC
 	LIMIT $3::TEXT::INTEGER
 	`
 
-//SQLSelectPostsSinceAscLimitTree -
-const SQLSelectPostsSinceAscLimitTree = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPSinceAscLimitTree - since asc limit tree
+const TPSinceAscLimitTree = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
-	WHERE thread = $1 AND (path > (SELECT path FROM posts WHERE id = $2::TEXT::INTEGER))
-	ORDER BY path
+	WHERE "thread" = $1 AND ("path" > (SELECT "path" FROM posts WHERE "id" = $2::TEXT::INTEGER))
+	ORDER BY "path"
 	LIMIT $3::TEXT::INTEGER
 	`
 
-//SQLSelectPostsSinceAscLimitParentTree -
-const SQLSelectPostsSinceAscLimitParentTree = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPSinceAscLimitParentTree - since asc limit parent tree
+const TPSinceAscLimitParentTree = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
 	WHERE path[1] IN (
-		SELECT id
+		SELECT "id"
 		FROM posts
-		WHERE thread = $1 AND parent = 0 AND id > (SELECT path[1] FROM posts WHERE id = $2::TEXT::INTEGER)
-		ORDER BY id LIMIT $3::TEXT::INTEGER
+		WHERE "thread" = $1 AND "parent" = 0 AND "id" > (SELECT path[1] FROM posts WHERE "id" = $2::TEXT::INTEGER)
+		ORDER BY "id" LIMIT $3::TEXT::INTEGER
 	)
-	ORDER BY path
+	ORDER BY "path"
 	`
 
-//SQLSelectPostsSinceAscLimitFlat -
-const SQLSelectPostsSinceAscLimitFlat = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPSinceAscLimitFlat - since asc limit flat
+const TPSinceAscLimitFlat = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
-	WHERE thread = $1 AND id > $2::TEXT::INTEGER
-	ORDER BY id
+	WHERE "thread" = $1 AND "id" > $2::TEXT::INTEGER
+	ORDER BY "id"
 	LIMIT $3::TEXT::INTEGER
 	`
 
-//SQLSelectPostsDescLimitTree -
-const SQLSelectPostsDescLimitTree = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPDescLimitTree - desc limit tree
+const TPDescLimitTree = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
-	WHERE thread = $1 
-	ORDER BY path DESC
+	WHERE "thread" = $1 
+	ORDER BY "path" DESC
 	LIMIT $2::TEXT::INTEGER
 	`
 
-//SQLSelectPostsDescLimitParentTree -
-const SQLSelectPostsDescLimitParentTree = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPDescLimitParentTree - desc limit parent tree
+const TPDescLimitParentTree = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
-	WHERE thread = $1 AND path[1] IN (
+	WHERE "thread" = $1 AND path[1] IN (
 		SELECT path[1]
 		FROM posts
-		WHERE thread = $1
+		WHERE "thread" = $1
 		GROUP BY path[1]
 		ORDER BY path[1] DESC
 		LIMIT $2::TEXT::INTEGER
 	)
-	ORDER BY path[1] DESC, path
+	ORDER BY path[1] DESC, "path"
 	`
 
-//SQLSelectPostsDescLimitFlat -
-const SQLSelectPostsDescLimitFlat = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPDescLimitFlat - desc limit flat
+const TPDescLimitFlat = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
-	WHERE thread = $1
-	ORDER BY id DESC
+	WHERE "thread" = $1
+	ORDER BY "id" DESC
 	LIMIT $2::TEXT::INTEGER
 	`
 
-//SQLSelectPostsAscLimitTree -
-const SQLSelectPostsAscLimitTree = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPAscLimitTree - asc limit tree
+const TPAscLimitTree = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
-	WHERE thread = $1 
-	ORDER BY path
+	WHERE "thread" = $1 
+	ORDER BY "path"
 	LIMIT $2::TEXT::INTEGER
 	`
 
-//SQLSelectPostsAscLimitParentTree -
-const SQLSelectPostsAscLimitParentTree = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPAscLimitParentTree - asc limit parent tree
+const TPAscLimitParentTree = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
-	WHERE thread = $1 AND path[1] IN (
+	WHERE "thread" = $1 AND path[1] IN (
 		SELECT path[1] 
 		FROM posts 
-		WHERE thread = $1 
+		WHERE "thread" = $1 
 		GROUP BY path[1]
 		ORDER BY path[1]
 		LIMIT $2::TEXT::INTEGER
 	)
-	ORDER BY path
+	ORDER BY "path"
 	`
 
-//SQLSelectPostsAscLimitFlat -
-const SQLSelectPostsAscLimitFlat = `
-	SELECT id, author, parent, message, forum, thread, created
+//TPAscLimitFlat - asc limit flat
+const TPAscLimitFlat = `
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
 	FROM posts
-	WHERE thread = $1 
-	ORDER BY id
+	WHERE "thread" = $1 
+	ORDER BY "id"
 	LIMIT $2::TEXT::INTEGER
 	`

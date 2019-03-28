@@ -43,7 +43,7 @@ func ThreadCreate(ctx *fasthttp.RequestCtx) {
 		ctx.Write(result)
 
 	} else if error == models.ErrThreadAlreadyExists ||
-		error == models.ErrUserNotFound || error == models.ErrThreadNotFound { // Сменить ошибку на другую
+		error == models.ErrUserNotFound || error == models.ErrThreadNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
 		result, _ := json.Marshal(error)
 		ctx.Write(result)
@@ -63,12 +63,6 @@ func ThreadVote(ctx *fasthttp.RequestCtx) {
 	}
 
 	threadSlug := ctx.UserValue("slug_or_id").(string)
-
-	if id, errorSlug := strconv.Atoi(threadSlug); errorSlug == nil {
-		vote.SlugID = id
-	} else {
-		vote.Slug = threadSlug
-	}
 
 	response, error := mw.ThreadSlugVoteMiddleware(&vote, threadSlug)
 
@@ -134,13 +128,13 @@ func ThreadDetailsPost(ctx *fasthttp.RequestCtx) {
 
 //ThreadPosts - returns thread posts
 func ThreadPosts(ctx *fasthttp.RequestCtx) {
-	slugOrID := ctx.UserValue("slug_or_id").(string)
-	limit := ctx.FormValue("limit")
-	since := ctx.FormValue("since")
-	sort := ctx.FormValue("sort")
-	desc := ctx.FormValue("desc")
+	slug := ctx.UserValue("slug_or_id").(string)
+	limit := string(ctx.FormValue("limit"))
+	since := string(ctx.FormValue("since"))
+	sort := string(ctx.FormValue("sort"))
+	desc := string(ctx.FormValue("desc"))
 
-	response, error := mw.ThreadPostsMiddleware(slugOrID, limit, since, sort, desc)
+	response, error := mw.ThreadPostsMiddleware(slug, limit, since, sort, desc)
 
 	if error == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
