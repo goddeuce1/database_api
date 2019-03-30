@@ -1,9 +1,5 @@
-DROP TABLE IF EXISTS errors CASCADE;
-CREATE TABLE IF NOT EXISTS errors (
-    "message" TEXT
-);
+CREATE EXTENSION IF NOT EXISTS citext;
 
-DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE IF NOT EXISTS users (
     "about"     TEXT,
     "email"     CITEXT UNIQUE NOT NULL,
@@ -11,7 +7,6 @@ CREATE TABLE IF NOT EXISTS users (
     "nickname"  CITEXT UNIQUE PRIMARY KEY NOT NULL
 );
 
-DROP TABLE IF EXISTS forums CASCADE;
 CREATE TABLE IF NOT EXISTS forums (
     "posts"     INT DEFAULT 0,
     "slug"      CITEXT UNIQUE NOT NULL,
@@ -20,7 +15,6 @@ CREATE TABLE IF NOT EXISTS forums (
     "user"      CITEXT NOT NULL REFERENCES users("nickname")
 );
 
-DROP TABLE IF EXISTS threads CASCADE;
 CREATE TABLE IF NOT EXISTS threads (
     "author"    CITEXT NOT NULL REFERENCES users("nickname"),
     "created"   TIMESTAMPTZ(3)  DEFAULT now(),
@@ -32,7 +26,6 @@ CREATE TABLE IF NOT EXISTS threads (
     "votes"     INT DEFAULT 0
 );
 
-DROP TABLE IF EXISTS posts CASCADE;
 CREATE TABLE IF NOT EXISTS posts (
     "author"    CITEXT NOT NULL REFERENCES users("nickname"),
     "created"   TIMESTAMPTZ(3) DEFAULT now(),
@@ -45,7 +38,6 @@ CREATE TABLE IF NOT EXISTS posts (
     "path" 	  	INT []
 );
 
-DROP TABLE IF EXISTS votes CASCADE;
 CREATE TABLE IF NOT EXISTS votes (
     "nickname"	CITEXT NOT NULL,
     "thread"	INT NOT NULL REFERENCES threads("id"),
