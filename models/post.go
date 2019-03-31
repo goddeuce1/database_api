@@ -7,12 +7,12 @@ type Post struct {
 	Author   string    `json:"author"`
 	Created  time.Time `json:"created"`
 	Forum    string    `json:"forum"`
-	ID       int       `json:"id"`
+	ID       int64     `json:"id,omitempty"`
 	IsEdited bool      `json:"isEdited"`
 	Message  string    `json:"message"`
-	Parent   int       `json:"parent"`
+	Parent   int64     `json:"parent,omitempty"`
 	Thread   int       `json:"thread"`
-	Path     string    `json:"-"`
+	Path     []int64   `json:"-"`
 }
 
 //PostFull - struct of postfull
