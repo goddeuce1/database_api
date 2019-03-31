@@ -61,7 +61,7 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 		index.Forum = forum
 		index.Thread = id
 
-		var rows *pgx.Row
+		var rows error
 
 		rows = database.App.DB.QueryRow(
 			ops.TCMInsertValues,
@@ -71,13 +71,11 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 			index.Message,
 			index.Parent,
 			index.Thread,
-		)
+		).Scan(&index.ID, &index.Created)
 
-		var id int
-		var timeNow time.Time
-		_ = rows.Scan(&id, &timeNow)
-		index.ID = id
-		index.Created = timeNow
+		if rows != nil {
+			return nil, models.ErrGlobal
+		}
 
 		_, _ = database.App.DB.Exec(
 			ops.TCMUpdateForumPostsCount,
