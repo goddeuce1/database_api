@@ -69,7 +69,7 @@ func ForumSlugCreateMiddleware(thread *models.Thread, forum string) (models.Thre
 	}
 
 	var id int
-	_ = database.App.DB.QueryRow(
+	err := database.App.DB.QueryRow(
 		ops.FSCMInsertValues,
 		thread.Author,
 		thread.Forum,
@@ -79,7 +79,11 @@ func ForumSlugCreateMiddleware(thread *models.Thread, forum string) (models.Thre
 		thread.Created,
 	).Scan(&id)
 
-	_, err := database.App.DB.Exec(
+	if err != nil {
+		return nil, models.ErrGlobal
+	}
+
+	_, err = database.App.DB.Exec(
 		ops.TCMUpdateForumThreadsCount,
 		thread.Forum,
 	)
@@ -89,7 +93,7 @@ func ForumSlugCreateMiddleware(thread *models.Thread, forum string) (models.Thre
 	}
 
 	threads := models.Threads{}
-	thread.ID = id
+	thread.ID = int64(id)
 
 	threads = append(threads, thread)
 

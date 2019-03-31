@@ -122,7 +122,7 @@ func ThreadSlugVoteMiddleware(vote *models.Vote, slug string) (*models.Thread, *
 	var err error
 	var getPrevVoice int32
 	nickname := &pgtype.Varchar{}
-	prev := &pgtype.Int4{}
+	prev := &pgtype.Int2{}
 	threadID := &pgtype.Int4{}
 	votes := &pgtype.Int4{}
 
