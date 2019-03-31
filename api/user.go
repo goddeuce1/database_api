@@ -19,7 +19,6 @@ func UserCreate(ctx *fasthttp.RequestCtx) {
 		ctx.SetBodyString(err.Error())
 		return
 	}
-
 	response, error := mw.UserCreateMiddleware(&user)
 
 	if error == nil {
