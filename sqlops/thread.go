@@ -42,7 +42,7 @@ const TSVUpdateVotes = `
 //TCMInsertValues - used for ThreadCreateMiddleware as request text
 const TCMInsertValues = `
 	INSERT INTO posts("author", "created", "forum", "message", "parent", "thread", "path") 
-	VALUES($1, $2, $3, $4, $5, $6, (SELECT path FROM posts WHERE id = $5) || (select currval(pg_get_serial_sequence('posts', 'id'))))
+	VALUES($1, $2, $3, $4, $5, $6, (SELECT "path" FROM posts WHERE "id" = $5) || (select currval(pg_get_serial_sequence('posts', 'id'))))
 	RETURNING "id", "created"
 	`
 

@@ -38,7 +38,7 @@ const FSCMSelectThreadBySlug = `
 const FSCMInsertValues = `
 	INSERT INTO threads("author", "forum", "message", "title", "slug", "created") 
 	VALUES($1, $2, $3, $4, $5, $6)
-	RETURNING id
+	RETURNING "id"
 	`
 
 //FSTSelectThreadsLSD - used for ForumSlugThreads as request text
