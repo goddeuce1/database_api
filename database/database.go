@@ -1,6 +1,9 @@
 package database
 
 import (
+	"fmt"
+	"io/ioutil"
+
 	"github.com/jackc/pgx"
 )
 
@@ -20,6 +23,14 @@ func (a *Application) OpenConnection(input string) {
 		pgx.ConnPoolConfig{
 			ConnConfig: pgxConfig,
 		})
+
+	if query, err := ioutil.ReadFile("database/sql/items.sql"); err != nil {
+		fmt.Println(err)
+	} else {
+		if _, err := a.DB.Exec(string(query)); err != nil {
+			fmt.Println(err)
+		}
+	}
 }
 
 //CloseConnection - closes database connection
