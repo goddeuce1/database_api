@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"../database"
 	mw "../middlewares"
@@ -29,9 +28,6 @@ func ServiceStatus(ctx *fasthttp.RequestCtx) {
 
 //ServiceClear - clear everything in database
 func ServiceClear(ctx *fasthttp.RequestCtx) {
-	_, err := database.App.DB.Exec("TRUNCATE users, forums, threads, posts, votes")
-	if err != nil {
-		fmt.Println(err)
-	}
+	_, _ = database.App.DB.Exec("TRUNCATE users, forums, threads, posts, votes")
 	mw.SetHeaders(ctx, fasthttp.StatusOK)
 }

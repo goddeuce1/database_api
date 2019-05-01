@@ -4,7 +4,7 @@ package middlewares
 const UCMGetByNickOrMail = `
 	SELECT "about", "email", "fullname", "nickname"
 	FROM users
-	WHERE lower("nickname") = lower($1) OR lower("email") = lower($2)
+	WHERE "nickname" = $1 OR "email" = $2
 	`
 
 //UCMInsertValues - used for UserCreateMiddleware as request text

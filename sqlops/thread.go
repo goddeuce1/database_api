@@ -84,36 +84,28 @@ const TCMFindPostByParent = `
 //TCMUpdateForumPostsCount - updates posts count (forum)
 const TCMUpdateForumPostsCount = `
 	UPDATE forums
-	SET "posts" = "posts" + 1
-	WHERE "slug" = $1
+	SET "posts" = "posts" + $1
+	WHERE "slug" = $2
 	`
 
 //TDPUpdateMessageID - updates thread message
 const TDPUpdateMessageID = `
 	UPDATE threads
-	SET "message" = $1
-	WHERE "id" = $2
+	SET 
+	"message" = coalesce(nullif($1, ''), "message"),
+	"title" = coalesce(nullif($2, ''), "title")
+	WHERE "id" = $3
+	RETURNING "author", "created", "forum", "id", "message", "slug", "title", "votes"
 	`
 
 //TDPUpdateMessageSlug - updates thread message
 const TDPUpdateMessageSlug = `
 	UPDATE threads
-	SET "message" = $1
-	WHERE "slug" = $2
-	`
-
-//TDPUpdateTitleID - updates thread message
-const TDPUpdateTitleID = `
-	UPDATE threads
-	SET "title" = $1
-	WHERE "id" = $2
-	`
-
-//TDPUpdateTitleSlug - updates thread message
-const TDPUpdateTitleSlug = `
-	UPDATE threads
-	SET "title" = $1
-	WHERE "slug" = $2
+	SET 
+	"message" = coalesce(nullif($1, ''), "message"),
+	"title" = coalesce(nullif($2, ''), "title")
+	WHERE "slug" = $3
+	RETURNING "author", "created", "forum", "id", "message", "slug", "title", "votes"
 	`
 
 //TCMUpdatePath - updates post path
@@ -125,79 +117,79 @@ const TCMUpdatePath = `
 
 //TPSinceDescLimitTree - since desc limit tree
 const TPSinceDescLimitTree = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
-	WHERE "thread" = $1 AND ("path" < (SELECT "path" FROM posts WHERE "id" = $2::TEXT::INTEGER))
+	WHERE "thread" = $1 AND ("path" < (SELECT "path" FROM posts WHERE "id" = $2))
 	ORDER BY "path" DESC
-	LIMIT $3::TEXT::INTEGER
+	LIMIT $3
 	`
 
 //TPSinceDescLimitParentTree - since desc limit parent tree
 const TPSinceDescLimitParentTree = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
 	WHERE path[1] IN (
 		SELECT "id"
 		FROM posts
-		WHERE "thread" = $1 AND "parent" = 0 AND "id" < (SELECT path[1] FROM posts WHERE "id" = $2::TEXT::INTEGER)
+		WHERE "thread" = $1 AND "parent" = 0 AND "id" < (SELECT path[1] FROM posts WHERE "id" = $2)
 		ORDER BY "id" DESC
-		LIMIT $3::TEXT::INTEGER
+		LIMIT $3
 	)
 	ORDER BY "path"
 	`
 
 //TPSinceDescLimitFlat - since desc limit flat
 const TPSinceDescLimitFlat = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
-	WHERE "thread" = $1 AND "id" < $2::TEXT::INTEGER
+	WHERE "thread" = $1 AND "id" < $2
 	ORDER BY "id" DESC
-	LIMIT $3::TEXT::INTEGER
+	LIMIT $3
 	`
 
 //TPSinceAscLimitTree - since asc limit tree
 const TPSinceAscLimitTree = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
-	WHERE "thread" = $1 AND ("path" > (SELECT "path" FROM posts WHERE "id" = $2::TEXT::INTEGER))
+	WHERE "thread" = $1 AND ("path" > (SELECT "path" FROM posts WHERE "id" = $2))
 	ORDER BY "path"
-	LIMIT $3::TEXT::INTEGER
+	LIMIT $3
 	`
 
 //TPSinceAscLimitParentTree - since asc limit parent tree
 const TPSinceAscLimitParentTree = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
 	WHERE path[1] IN (
 		SELECT "id"
 		FROM posts
-		WHERE "thread" = $1 AND "parent" = 0 AND "id" > (SELECT path[1] FROM posts WHERE "id" = $2::TEXT::INTEGER)
-		ORDER BY "id" LIMIT $3::TEXT::INTEGER
+		WHERE "thread" = $1 AND "parent" = 0 AND "id" > (SELECT path[1] FROM posts WHERE "id" = $2)
+		ORDER BY "id" LIMIT $3
 	)
 	ORDER BY "path"
 	`
 
 //TPSinceAscLimitFlat - since asc limit flat
 const TPSinceAscLimitFlat = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
-	WHERE "thread" = $1 AND "id" > $2::TEXT::INTEGER
+	WHERE "thread" = $1 AND "id" > $2
 	ORDER BY "id"
-	LIMIT $3::TEXT::INTEGER
+	LIMIT $3
 	`
 
 //TPDescLimitTree - desc limit tree
 const TPDescLimitTree = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
 	WHERE "thread" = $1 
 	ORDER BY "path" DESC
-	LIMIT $2::TEXT::INTEGER
+	LIMIT $2
 	`
 
 //TPDescLimitParentTree - desc limit parent tree
 const TPDescLimitParentTree = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
 	WHERE "thread" = $1 AND path[1] IN (
 		SELECT path[1]
@@ -205,32 +197,32 @@ const TPDescLimitParentTree = `
 		WHERE "thread" = $1
 		GROUP BY path[1]
 		ORDER BY path[1] DESC
-		LIMIT $2::TEXT::INTEGER
+		LIMIT $2
 	)
 	ORDER BY path[1] DESC, "path"
 	`
 
 //TPDescLimitFlat - desc limit flat
 const TPDescLimitFlat = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
 	WHERE "thread" = $1
 	ORDER BY "id" DESC
-	LIMIT $2::TEXT::INTEGER
+	LIMIT $2
 	`
 
 //TPAscLimitTree - asc limit tree
 const TPAscLimitTree = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
 	WHERE "thread" = $1 
 	ORDER BY "path"
-	LIMIT $2::TEXT::INTEGER
+	LIMIT $2
 	`
 
 //TPAscLimitParentTree - asc limit parent tree
 const TPAscLimitParentTree = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
 	WHERE "thread" = $1 AND path[1] IN (
 		SELECT path[1] 
@@ -238,16 +230,36 @@ const TPAscLimitParentTree = `
 		WHERE "thread" = $1 
 		GROUP BY path[1]
 		ORDER BY path[1]
-		LIMIT $2::TEXT::INTEGER
+		LIMIT $2
 	)
 	ORDER BY "path"
 	`
 
 //TPAscLimitFlat - asc limit flat
 const TPAscLimitFlat = `
-	SELECT "id", "author", "parent", "message", "forum", "thread", "created"
+	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
 	WHERE "thread" = $1 
 	ORDER BY "id"
-	LIMIT $2::TEXT::INTEGER
+	LIMIT $2
+	`
+
+//////////////////////////////////////////
+
+//TSVoteByID - create/update vote by id
+const TSVoteByID = `
+	INSERT INTO votes(voice, nickname, thread) 
+	VALUES($1, $2, $3) 
+	ON CONFLICT ON CONSTRAINT votes_constraint DO
+	UPDATE SET voice = excluded.voice
+	RETURNING voice
+	`
+
+//TSVoteBySlug - create/update vote by slug
+const TSVoteBySlug = `
+	INSERT INTO votes(voice, nickname, thread)
+	VALUES($1, $2, (SELECT id FROM threads WHERE slug = $3))
+	ON CONFLICT ON CONSTRAINT votes_constraint DO
+	UPDATE SET voice = excluded.voice
+	RETURNING voice
 	`

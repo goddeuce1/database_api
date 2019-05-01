@@ -3,7 +3,8 @@ package middlewares
 //FCMInsertValues - used for ForumCreateMiddleware as request text
 const FCMInsertValues = `
 	INSERT INTO forums("slug", "title", "user") 
-	VALUES($1, $2, $3)
+	VALUES($1, $2, (SELECT "nickname" FROM users WHERE "nickname" = $3))
+	RETURNING "user", "threads", "posts"
 	`
 
 //FSDGetValues - used for ForumSlugDetails as request text
@@ -17,28 +18,21 @@ const FSDGetValues = `
 const FSCMSelectForumBySlug = `
 	SELECT "slug"
 	FROM forums
-	WHERE lower("slug") = $1
-	`
-
-//FSCMSelectUserAndForum - used for ForumSlugCreateMiddleware as request text
-const FSCMSelectUserAndForum = `
-	SELECT "u.nickname", "f.slug" 
-	FROM users AS u, forums AS f
-	WHERE lower("u.nickname") = $1 AND lower("f.slug") = $2
+	WHERE "slug" = $1
 	`
 
 //FSCMSelectThreadBySlug - used for ForumCreateMiddleware as request text
 const FSCMSelectThreadBySlug = `
-	SELECT "author", "created", "forum", "id", "message", "slug", "title"
+	SELECT "author", "created", "forum", "id", "message", "slug", "title", "votes"
 	FROM threads
-	WHERE lower("slug") = $1
+	WHERE "slug" = $1
 	`
 
 //FSCMInsertValues - used for ForumCreateMiddleware as request text
 const FSCMInsertValues = `
 	INSERT INTO threads("author", "forum", "message", "title", "slug", "created") 
-	VALUES($1, $2, $3, $4, $5, $6)
-	RETURNING "id"
+	VALUES($1, (SELECT "slug" FROM forums WHERE "slug" = $2), $3, $4, nullif($5, ''), $6)
+	RETURNING "id", "forum", "votes"
 	`
 
 //FSTSelectThreadsLSD - used for ForumSlugThreads as request text

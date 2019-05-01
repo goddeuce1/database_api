@@ -2,14 +2,15 @@ package api
 
 import (
 	"encoding/json"
-	"strconv"
 
 	mw "../middlewares"
 	"../models"
 	"github.com/valyala/fasthttp"
 )
 
-//ThreadCreate - creates thread
+//log.Println(string(ctx.Request.Header.RequestURI()))
+
+//ThreadCreate - creates posts for thread
 func ThreadCreate(ctx *fasthttp.RequestCtx) {
 	posts := models.Posts{}
 	err := json.Unmarshal(ctx.PostBody(), &posts)
@@ -22,14 +23,6 @@ func ThreadCreate(ctx *fasthttp.RequestCtx) {
 
 	thread := ctx.UserValue("slug_or_id").(string)
 
-	if threadID, error := strconv.Atoi(thread); error == nil {
-
-		for _, index := range posts {
-			index.Thread = threadID
-		}
-
-	}
-
 	response, error := mw.ThreadCreateMiddleware(posts, thread)
 
 	if error == nil {
@@ -37,13 +30,12 @@ func ThreadCreate(ctx *fasthttp.RequestCtx) {
 		result, _ := json.Marshal(response)
 		ctx.Write(result)
 
-	} else if error == models.ErrThreadAlreadyExists || error == models.ErrParentNotFound {
+	} else if error == models.ErrParentNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusConflict)
 		result, _ := json.Marshal(response)
 		ctx.Write(result)
 
-	} else if error == models.ErrThreadAlreadyExists ||
-		error == models.ErrUserNotFound || error == models.ErrThreadNotFound {
+	} else if error == models.ErrUserNotFound || error == models.ErrThreadNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
 		result, _ := json.Marshal(error)
 		ctx.Write(result)

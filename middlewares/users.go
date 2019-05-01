@@ -1,8 +1,6 @@
 package middlewares
 
 import (
-	"strings"
-
 	"github.com/jackc/pgx"
 
 	"../database"
@@ -12,39 +10,34 @@ import (
 
 //UserCreateMiddleware - create user
 func UserCreateMiddleware(user *models.User) (models.Users, *models.Error) {
-	rows, _ := database.App.DB.Exec(ops.UCMInsertValues, user.About, user.Email, user.Fullname, user.Nickname)
+	_, err := database.App.DB.Exec(ops.UCMInsertValues, user.About, user.Email, user.Fullname, user.Nickname)
 
-	if rows.RowsAffected() == 0 {
+	if err == nil {
+		return models.Users{}, nil
+	}
+
+	if err.(pgx.PgError).Code == "23505" {
 		conflictUsers := models.Users{}
-		conflictRows, err := database.App.DB.Query(ops.UCMGetByNickOrMail, user.Nickname, user.Email)
-
-		if err != nil {
-			return nil, models.ErrGlobal
-		}
+		conflictRows, _ := database.App.DB.Query(ops.UCMGetByNickOrMail, user.Nickname, user.Email)
 
 		defer conflictRows.Close()
 
 		for conflictRows.Next() {
 			user := models.User{}
-			err := conflictRows.Scan(&user.About, &user.Email, &user.Fullname, &user.Nickname)
-
-			if err != nil {
-				return nil, models.ErrGlobal
-			}
+			_ = conflictRows.Scan(&user.About, &user.Email, &user.Fullname, &user.Nickname)
 
 			conflictUsers = append(conflictUsers, &user)
 		}
 
 		return conflictUsers, models.ErrUserAlreadyExists
 	}
-
-	return models.Users{}, nil
+	return nil, models.ErrGlobal
 }
 
 //UserProfileGetMiddleware - returns desired user
 func UserProfileGetMiddleware(nickname string) (*models.User, *models.Error) {
 	user := models.User{}
-	row := database.App.DB.QueryRow(ops.UCMGetByNickOrMail, strings.ToLower(nickname), "NULL")
+	row := database.App.DB.QueryRow(ops.UCMGetByNickOrMail, nickname, "NULL")
 
 	err := row.Scan(&user.About, &user.Email, &user.Fullname, &user.Nickname)
 
@@ -57,26 +50,25 @@ func UserProfileGetMiddleware(nickname string) (*models.User, *models.Error) {
 
 //UserProfilePostMiddleware - returns new user settings
 func UserProfilePostMiddleware(user *models.User) (*models.User, *models.Error) {
-	rows := database.App.DB.QueryRow(ops.UPPUpdateSettings,
+	err := database.App.DB.QueryRow(ops.UPPUpdateSettings,
 		user.About,
 		user.Email,
 		user.Fullname,
 		user.Nickname,
 	).Scan(&user.Fullname, &user.About, &user.Email, &user.Nickname)
 
-	if rows != nil {
-		_, ok := rows.(pgx.PgError)
+	if err != nil {
 
-		if ok {
+		if err.Error() == "no rows in result set" {
+			return nil, models.ErrUserNotFound
+		}
+
+		switch err.(pgx.PgError).Code {
+		case "23505":
 			return nil, models.ErrSettingsConflict
 		}
+
 	}
 
-	profile, error := UserProfileGetMiddleware(user.Nickname)
-
-	if error != nil {
-		return nil, models.ErrUserNotFound
-	}
-
-	return profile, nil
+	return user, nil
 }

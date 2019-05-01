@@ -39,7 +39,7 @@ func ForumCreate(ctx *fasthttp.RequestCtx) {
 
 }
 
-//ForumSlugCreate - create forum thread
+//ForumSlugCreate - create thread
 func ForumSlugCreate(ctx *fasthttp.RequestCtx) {
 	thread := models.Thread{}
 	err := json.Unmarshal(ctx.PostBody(), &thread)

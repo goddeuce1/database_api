@@ -10,11 +10,8 @@ import (
 
 //PostIDDetailsPostMiddleware - updates post message by id
 func PostIDDetailsPostMiddleware(message string, id string) (*models.Post, *models.Error) {
-	row := database.App.DB.QueryRow(ops.PIDUGetPostByID, id)
-
 	post := models.Post{}
-
-	err := row.Scan(
+	err := database.App.DB.QueryRow(ops.PIDUUpdateMessage, message, id).Scan(
 		&post.Author,
 		&post.Forum,
 		&post.ID,
@@ -22,21 +19,11 @@ func PostIDDetailsPostMiddleware(message string, id string) (*models.Post, *mode
 		&post.Message,
 		&post.Thread,
 		&post.Created,
+		&post.Parent,
 	)
 
 	if err != nil {
 		return nil, models.ErrPostNotFound
-	}
-
-	if message != "" && message != post.Message {
-		_, err = database.App.DB.Exec(ops.PIDUUpdateMessage, message, true, id)
-
-		if err != nil {
-			return nil, models.ErrGlobal
-		}
-
-		post.IsEdited = true
-		post.Message = message
 	}
 
 	return &post, nil
@@ -56,6 +43,7 @@ func PostIDDetailsGetMiddleware(id, related string) (*map[string]interface{}, *m
 		&post.Message,
 		&post.Thread,
 		&post.Created,
+		&post.Parent,
 	)
 
 	if err != nil {
@@ -104,8 +92,10 @@ func PostIDDetailsGetMiddleware(id, related string) (*map[string]interface{}, *m
 		}
 
 		if value == "thread" {
+
 			row = database.App.DB.QueryRow(ops.PIDUGetThreadByID, post.Thread)
 			thread := models.Thread{}
+
 			err = row.Scan(
 				&thread.Author,
 				&thread.Created,
@@ -114,6 +104,7 @@ func PostIDDetailsGetMiddleware(id, related string) (*map[string]interface{}, *m
 				&thread.Message,
 				&thread.Slug,
 				&thread.Title,
+				&thread.Votes,
 			)
 
 			if err != nil {
