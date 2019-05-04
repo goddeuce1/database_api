@@ -1,17 +1,17 @@
 package api
 
 import (
-	"encoding/json"
+	"park_base/park_db/models"
 
-	mw "../middlewares"
-	"../models"
+	mw "park_base/park_db/middlewares"
+
 	"github.com/valyala/fasthttp"
 )
 
 //UserCreate - creates user
 func UserCreate(ctx *fasthttp.RequestCtx) {
 	user := models.User{}
-	err := json.Unmarshal(ctx.PostBody(), &user)
+	err := user.UnmarshalJSON(ctx.PostBody())
 	user.Nickname = ctx.UserValue("nickname").(string)
 
 	if err != nil {
@@ -23,12 +23,12 @@ func UserCreate(ctx *fasthttp.RequestCtx) {
 
 	if error == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusCreated)
-		result, _ := json.Marshal(user)
+		result, _ := user.MarshalJSON()
 		ctx.Write(result)
 
 	} else if error == models.ErrUserAlreadyExists {
 		mw.SetHeaders(ctx, fasthttp.StatusConflict)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 	}
 }
@@ -40,12 +40,12 @@ func UserProfileGet(ctx *fasthttp.RequestCtx) {
 
 	if err == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if err == models.ErrUserNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(err)
+		result, _ := err.MarshalJSON()
 		ctx.Write(result)
 	}
 }
@@ -53,7 +53,7 @@ func UserProfileGet(ctx *fasthttp.RequestCtx) {
 //UserProfilePost - returns new user settings
 func UserProfilePost(ctx *fasthttp.RequestCtx) {
 	user := models.User{}
-	err := json.Unmarshal(ctx.PostBody(), &user)
+	err := user.UnmarshalJSON(ctx.PostBody())
 
 	user.Nickname = ctx.UserValue("nickname").(string)
 
@@ -67,16 +67,16 @@ func UserProfilePost(ctx *fasthttp.RequestCtx) {
 
 	if error == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
-		result, _ := json.Marshal(returnUser)
+		result, _ := returnUser.MarshalJSON()
 		ctx.Write(result)
 
 	} else if error == models.ErrUserNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(error)
+		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 	} else if error == models.ErrSettingsConflict {
 		mw.SetHeaders(ctx, fasthttp.StatusConflict)
-		result, _ := json.Marshal(error)
+		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 	}
 }

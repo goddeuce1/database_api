@@ -21,4 +21,5 @@ type ThreadUpdate struct {
 }
 
 //Threads - slice of thread
+//easyjson:json
 type Threads []*Thread

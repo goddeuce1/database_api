@@ -1,11 +1,11 @@
 package middlewares
 
 import (
-	"github.com/jackc/pgx"
+	"park_base/park_db/database"
+	"park_base/park_db/models"
+	ops "park_base/park_db/sqlops"
 
-	"../database"
-	"../models"
-	ops "../sqlops"
+	"github.com/jackc/pgx"
 )
 
 //UserCreateMiddleware - create user

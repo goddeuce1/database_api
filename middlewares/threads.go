@@ -1,13 +1,15 @@
 package middlewares
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
+	"park_base/park_db/database"
+	"park_base/park_db/models"
+	ops "park_base/park_db/sqlops"
 	"strconv"
 	"strings"
 
-	"../database"
-	"../models"
-	ops "../sqlops"
 	"github.com/jackc/pgx"
 )
 
@@ -25,10 +27,7 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 
 	query := strings.Builder{}
 
-	value := 0
-	_ = database.App.DB.QueryRow("SELECT nextval('posts_id_seq')").Scan(&value)
-
-	query.WriteString("INSERT INTO posts(author, message, parent, forum, thread, path) VALUES")
+	query.WriteString("INSERT INTO posts(author, message, parent, forum, thread) VALUES")
 
 	for index, post := range posts {
 
@@ -49,7 +48,11 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 			return nil, models.ErrUserNotFound
 		}
 
-		query.WriteString(fmt.Sprintf("('%s', '%s', '%d', '%s', '%d', (select path from posts where id = %d) || (select currval(pg_get_serial_sequence('posts', 'id'))))", post.Author, post.Message, post.Parent, result.Forum, result.ID, post.Parent))
+		if post.Parent != 0 {
+			query.WriteString(fmt.Sprintf("('%s', '%s', '%d', '%s', '%d')", post.Author, post.Message, post.Parent, result.Forum, result.ID))
+		} else {
+			query.WriteString(fmt.Sprintf("('%s', '%s', NULL, '%s', '%d')", post.Author, post.Message, result.Forum, result.ID))
+		}
 
 		if index < len(posts)-1 {
 			query.WriteString(", ")
@@ -63,9 +66,11 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 	defer rows.Close()
 
 	newposts := models.Posts{}
+	flag := false
 
 	for rows.Next() {
 		post := models.Post{}
+		var value sql.NullInt64
 		_ = rows.Scan(
 			&post.ID,
 			&post.Thread,
@@ -74,13 +79,28 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 			&post.IsEdited,
 			&post.Author,
 			&post.Message,
-			&post.Parent,
+			&value,
 		)
 
+		if value.Valid {
+			post.Parent = value.Int64
+		}
+
 		newposts = append(newposts, &post)
+
+		if post.ID == 1500000 {
+			log.Println("vacuum will be")
+			flag = true
+		}
+
 	}
 
-	_, _ = database.App.DB.Exec(ops.TCMUpdateForumPostsCount, len(newposts), result.Forum)
+	database.App.DB.Exec(ops.TCMUpdateForumPostsCount, len(newposts), result.Forum)
+
+	if flag {
+		log.Println("vacuum now!")
+		database.App.DB.Exec("VACUUM ANALYZE")
+	}
 
 	return newposts, nil
 }
@@ -225,19 +245,23 @@ func ThreadPostsMiddleware(slug, limit, since, sort, desc string) (*models.Posts
 	posts := models.Posts{}
 	for rows.Next() {
 		post := models.Post{}
+		var value sql.NullInt64
 
-		if err := rows.Scan(
+		_ = rows.Scan(
 			&post.ID,
 			&post.Author,
-			&post.Parent,
+			&value,
 			&post.Message,
 			&post.Forum,
 			&post.Thread,
 			&post.Created,
 			&post.IsEdited,
-		); err != nil {
-			return nil, models.ErrGlobal
+		)
+
+		if value.Valid {
+			post.Parent = value.Int64
 		}
+
 		posts = append(posts, &post)
 	}
 

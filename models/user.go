@@ -16,4 +16,5 @@ type UserUpdate struct {
 }
 
 //Users - slice of user
+//easyjson:json
 type Users []*User

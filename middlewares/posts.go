@@ -1,16 +1,18 @@
 package middlewares
 
 import (
+	"database/sql"
+	"park_base/park_db/database"
+	"park_base/park_db/models"
+	ops "park_base/park_db/sqlops"
 	"strings"
-
-	"../database"
-	"../models"
-	ops "../sqlops"
 )
 
 //PostIDDetailsPostMiddleware - updates post message by id
 func PostIDDetailsPostMiddleware(message string, id string) (*models.Post, *models.Error) {
 	post := models.Post{}
+	var value sql.NullInt64
+
 	err := database.App.DB.QueryRow(ops.PIDUUpdateMessage, message, id).Scan(
 		&post.Author,
 		&post.Forum,
@@ -19,8 +21,12 @@ func PostIDDetailsPostMiddleware(message string, id string) (*models.Post, *mode
 		&post.Message,
 		&post.Thread,
 		&post.Created,
-		&post.Parent,
+		&value,
 	)
+
+	if value.Valid {
+		post.Parent = value.Int64
+	}
 
 	if err != nil {
 		return nil, models.ErrPostNotFound
@@ -35,6 +41,8 @@ func PostIDDetailsGetMiddleware(id, related string) (*map[string]interface{}, *m
 
 	post := models.Post{}
 
+	var value sql.NullInt64
+
 	err := row.Scan(
 		&post.Author,
 		&post.Forum,
@@ -43,8 +51,12 @@ func PostIDDetailsGetMiddleware(id, related string) (*map[string]interface{}, *m
 		&post.Message,
 		&post.Thread,
 		&post.Created,
-		&post.Parent,
+		&value,
 	)
+
+	if value.Valid {
+		post.Parent = value.Int64
+	}
 
 	if err != nil {
 		return nil, models.ErrPostNotFound

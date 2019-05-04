@@ -131,7 +131,7 @@ const TPSinceDescLimitParentTree = `
 	WHERE path[1] IN (
 		SELECT "id"
 		FROM posts
-		WHERE "thread" = $1 AND "parent" = 0 AND "id" < (SELECT path[1] FROM posts WHERE "id" = $2)
+		WHERE "thread" = $1 AND "parent" IS NULL AND "id" < (SELECT path[1] FROM posts WHERE "id" = $2)
 		ORDER BY "id" DESC
 		LIMIT $3
 	)
@@ -163,7 +163,7 @@ const TPSinceAscLimitParentTree = `
 	WHERE path[1] IN (
 		SELECT "id"
 		FROM posts
-		WHERE "thread" = $1 AND "parent" = 0 AND "id" > (SELECT path[1] FROM posts WHERE "id" = $2)
+		WHERE "thread" = $1 AND "parent" IS NULL AND "id" > (SELECT path[1] FROM posts WHERE "id" = $2)
 		ORDER BY "id" LIMIT $3
 	)
 	ORDER BY "path"

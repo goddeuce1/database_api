@@ -1,7 +1,8 @@
 package router
 
 import (
-	"../api"
+	"park_base/park_db/api"
+
 	"github.com/buaazp/fasthttprouter"
 )
 

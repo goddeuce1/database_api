@@ -1,10 +1,10 @@
 package api
 
 import (
-	"encoding/json"
+	"park_base/park_db/models"
 
-	mw "../middlewares"
-	"../models"
+	mw "park_base/park_db/middlewares"
+
 	"github.com/valyala/fasthttp"
 )
 
@@ -13,7 +13,7 @@ import (
 //ThreadCreate - creates posts for thread
 func ThreadCreate(ctx *fasthttp.RequestCtx) {
 	posts := models.Posts{}
-	err := json.Unmarshal(ctx.PostBody(), &posts)
+	err := posts.UnmarshalJSON(ctx.PostBody())
 
 	if err != nil {
 		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
@@ -27,17 +27,17 @@ func ThreadCreate(ctx *fasthttp.RequestCtx) {
 
 	if error == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusCreated)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if error == models.ErrParentNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusConflict)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if error == models.ErrUserNotFound || error == models.ErrThreadNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(error)
+		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 	}
 
@@ -46,7 +46,7 @@ func ThreadCreate(ctx *fasthttp.RequestCtx) {
 //ThreadVote - sets +-1 rating to thread
 func ThreadVote(ctx *fasthttp.RequestCtx) {
 	vote := models.Vote{}
-	err := json.Unmarshal(ctx.PostBody(), &vote)
+	err := vote.UnmarshalJSON(ctx.PostBody())
 
 	if err != nil {
 		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
@@ -60,12 +60,12 @@ func ThreadVote(ctx *fasthttp.RequestCtx) {
 
 	if error == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if error == models.ErrThreadNotFound || error == models.ErrUserNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(error)
+		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 
 	}
@@ -80,12 +80,12 @@ func ThreadDetailsGet(ctx *fasthttp.RequestCtx) {
 
 	if err == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if err == models.ErrThreadNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(err)
+		result, _ := err.MarshalJSON()
 		ctx.Write(result)
 	}
 }
@@ -93,7 +93,7 @@ func ThreadDetailsGet(ctx *fasthttp.RequestCtx) {
 //ThreadDetailsPost - updates thread info
 func ThreadDetailsPost(ctx *fasthttp.RequestCtx) {
 	threadUpdate := models.ThreadUpdate{}
-	err := json.Unmarshal(ctx.PostBody(), &threadUpdate)
+	err := threadUpdate.UnmarshalJSON(ctx.PostBody())
 
 	if err != nil {
 		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
@@ -107,12 +107,12 @@ func ThreadDetailsPost(ctx *fasthttp.RequestCtx) {
 
 	if error == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if error == models.ErrThreadNotFound || error == models.ErrUserNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(error)
+		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 
 	}
@@ -130,12 +130,12 @@ func ThreadPosts(ctx *fasthttp.RequestCtx) {
 
 	if error == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if error == models.ErrThreadNotFound || error == models.ErrUserNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(error)
+		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 
 	}

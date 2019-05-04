@@ -1,17 +1,16 @@
 package api
 
 import (
-	"encoding/json"
+	mw "park_base/park_db/middlewares"
+	"park_base/park_db/models"
 
-	mw "../middlewares"
-	"../models"
 	"github.com/valyala/fasthttp"
 )
 
 //ForumCreate - creates forum
 func ForumCreate(ctx *fasthttp.RequestCtx) {
 	forum := models.Forum{}
-	err := json.Unmarshal(ctx.PostBody(), &forum)
+	err := forum.UnmarshalJSON(ctx.PostBody())
 
 	if err != nil {
 		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
@@ -23,17 +22,17 @@ func ForumCreate(ctx *fasthttp.RequestCtx) {
 
 	if error == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusCreated)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if error == models.ErrForumAlreadyExists {
 		mw.SetHeaders(ctx, fasthttp.StatusConflict)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if error == models.ErrForumOwnerNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(error)
+		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 	}
 
@@ -42,7 +41,7 @@ func ForumCreate(ctx *fasthttp.RequestCtx) {
 //ForumSlugCreate - create thread
 func ForumSlugCreate(ctx *fasthttp.RequestCtx) {
 	thread := models.Thread{}
-	err := json.Unmarshal(ctx.PostBody(), &thread)
+	err := thread.UnmarshalJSON(ctx.PostBody())
 
 	if err != nil {
 		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
@@ -56,26 +55,26 @@ func ForumSlugCreate(ctx *fasthttp.RequestCtx) {
 	if error == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusCreated)
 		if len(response) == 1 {
-			result, _ := json.Marshal(*response[0])
+			result, _ := response[0].MarshalJSON()
 			ctx.Write(result)
 		} else {
-			result, _ := json.Marshal(response)
+			result, _ := response.MarshalJSON()
 			ctx.Write(result)
 		}
 
 	} else if error == models.ErrThreadAlreadyExists {
 		mw.SetHeaders(ctx, fasthttp.StatusConflict)
 		if len(response) == 1 {
-			result, _ := json.Marshal(*response[0])
+			result, _ := response[0].MarshalJSON()
 			ctx.Write(result)
 		} else {
-			result, _ := json.Marshal(response)
+			result, _ := response.MarshalJSON()
 			ctx.Write(result)
 		}
 
 	} else if error == models.ErrForumOrAuthorNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(error)
+		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 	}
 }
@@ -88,12 +87,12 @@ func ForumSlugDetails(ctx *fasthttp.RequestCtx) {
 
 	if err == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if err == models.ErrForumNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(err)
+		result, _ := err.MarshalJSON()
 		ctx.Write(result)
 	}
 }
@@ -110,12 +109,12 @@ func ForumSlugThreads(ctx *fasthttp.RequestCtx) {
 
 	if err == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if err == models.ErrForumNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(err)
+		result, _ := err.MarshalJSON()
 		ctx.Write(result)
 	}
 }
@@ -132,12 +131,12 @@ func ForumSlugUsers(ctx *fasthttp.RequestCtx) {
 
 	if err == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if err == models.ErrForumNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(err)
+		result, _ := err.MarshalJSON()
 		ctx.Write(result)
 	}
 

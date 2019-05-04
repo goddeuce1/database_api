@@ -2,16 +2,16 @@ package api
 
 import (
 	"encoding/json"
+	mw "park_base/park_db/middlewares"
+	"park_base/park_db/models"
 
-	mw "../middlewares"
-	"../models"
 	"github.com/valyala/fasthttp"
 )
 
 //PostIDDetailsPost - updates post info
 func PostIDDetailsPost(ctx *fasthttp.RequestCtx) {
 	postUpdate := models.PostUpdate{}
-	err := json.Unmarshal(ctx.PostBody(), &postUpdate)
+	err := postUpdate.UnmarshalJSON(ctx.PostBody())
 
 	if err != nil {
 		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
@@ -24,12 +24,12 @@ func PostIDDetailsPost(ctx *fasthttp.RequestCtx) {
 
 	if error == nil {
 		mw.SetHeaders(ctx, fasthttp.StatusOK)
-		result, _ := json.Marshal(response)
+		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
 	} else if error == models.ErrPostNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(error)
+		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 	}
 
@@ -48,7 +48,7 @@ func PostIDDetailsGet(ctx *fasthttp.RequestCtx) {
 
 	} else if error == models.ErrPostNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
-		result, _ := json.Marshal(error)
+		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 	}
 }

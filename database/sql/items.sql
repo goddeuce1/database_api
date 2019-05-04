@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS posts (
     created     TIMESTAMPTZ(3) DEFAULT now(),
     isedited    BOOLEAN DEFAULT FALSE,
     message     TEXT NOT NULL,
-    path        BIGINT [],
+    path        BIGINT[],
     author      CITEXT NOT NULL REFERENCES users,
     forum       CITEXT NOT NULL REFERENCES forums,
     thread      INTEGER NOT NULL REFERENCES threads,
@@ -75,6 +75,20 @@ CREATE OR REPLACE FUNCTION check_vote()
         $$
         LANGUAGE 'plpgsql';
 
+CREATE OR REPLACE FUNCTION insert_path()
+    RETURNS TRIGGER AS
+    $$
+    BEGIN
+    IF new.parent IS NULL
+        THEN new.path := (ARRAY [new.id]);
+        RETURN new;
+    END IF;
+    new.path := (SELECT array_append(p.path, new.id::bigint) FROM posts p where p.id = new.parent);
+        RETURN NEW;
+    END;
+    $$
+    LANGUAGE 'plpgsql';
+
 CREATE TRIGGER insert_vote
     AFTER INSERT ON votes
     FOR EACH ROW EXECUTE PROCEDURE insert_vote();
@@ -82,4 +96,9 @@ CREATE TRIGGER insert_vote
 CREATE TRIGGER check_vote
     AFTER UPDATE ON votes
     FOR EACH ROW EXECUTE PROCEDURE check_vote();
+
+CREATE TRIGGER path
+    BEFORE INSERT ON posts
+    FOR EACH ROW EXECUTE PROCEDURE insert_path();
+
 

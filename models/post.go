@@ -29,4 +29,5 @@ type PostUpdate struct {
 }
 
 //Posts - slice of post
+//easyjson:json
 type Posts []*Post

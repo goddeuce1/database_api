@@ -1,12 +1,12 @@
 package api
 
 import (
-	"encoding/json"
+	"park_base/park_db/database"
+	"park_base/park_db/models"
+	ops "park_base/park_db/sqlops"
 
-	"../database"
-	mw "../middlewares"
-	"../models"
-	ops "../sqlops"
+	mw "park_base/park_db/middlewares"
+
 	"github.com/valyala/fasthttp"
 )
 
@@ -22,12 +22,12 @@ func ServiceStatus(ctx *fasthttp.RequestCtx) {
 	}
 
 	mw.SetHeaders(ctx, fasthttp.StatusOK)
-	result, _ := json.Marshal(status)
+	result, _ := status.MarshalJSON()
 	ctx.Write(result)
 }
 
 //ServiceClear - clear everything in database
 func ServiceClear(ctx *fasthttp.RequestCtx) {
-	_, _ = database.App.DB.Exec("TRUNCATE users, forums, threads, posts, votes")
+	database.App.DB.Exec("TRUNCATE users, forums, threads, posts, votes")
 	mw.SetHeaders(ctx, fasthttp.StatusOK)
 }

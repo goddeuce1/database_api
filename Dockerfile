@@ -1,5 +1,6 @@
 FROM golang:1.12-stretch AS lang
 
+ADD . /go/src/park_base/park_db
 WORKDIR /usr/src/source
 
 COPY . .

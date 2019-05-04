@@ -2,9 +2,8 @@ package main
 
 import (
 	"log"
-
-	"./database"
-	"./router"
+	"park_base/park_db/database"
+	"park_base/park_db/router"
 
 	"github.com/valyala/fasthttp"
 )

@@ -1,11 +1,12 @@
 package middlewares
 
 import (
+	"park_base/park_db/models"
+	ops "park_base/park_db/sqlops"
 	"strconv"
 
-	"../database"
-	"../models"
-	ops "../sqlops"
+	"park_base/park_db/database"
+
 	"github.com/jackc/pgx"
 )
 
