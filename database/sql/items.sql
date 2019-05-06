@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS forums (
     "user"      CITEXT NOT NULL REFERENCES users
 );
 
+CREATE INDEX IF NOT EXISTS index_forum_user on forums ("user");
+
 DROP TABLE IF EXISTS threads CASCADE;
 CREATE TABLE IF NOT EXISTS threads (
     id          SERIAL PRIMARY KEY,
@@ -28,6 +30,10 @@ CREATE TABLE IF NOT EXISTS threads (
     forum       CITEXT NOT NULL REFERENCES forums,
     author      CITEXT NOT NULL REFERENCES users
 );
+
+CREATE INDEX IF NOT EXISTS index_threads_created on threads (created);
+CREATE INDEX IF NOT EXISTS index_threads_forum on threads (forum);
+CREATE INDEX IF NOT EXISTS index_threads_author on threads (author);
 
 DROP TABLE IF EXISTS posts CASCADE;
 CREATE TABLE IF NOT EXISTS posts (
@@ -41,6 +47,13 @@ CREATE TABLE IF NOT EXISTS posts (
     thread      INTEGER NOT NULL REFERENCES threads,
     parent      INTEGER DEFAULT 0
 );
+
+CREATE INDEX IF NOT EXISTS index_posts_created on posts (created);
+CREATE INDEX IF NOT EXISTS index_posts_path on posts (path);
+CREATE INDEX IF NOT EXISTS index_posts_author on posts (author);
+CREATE INDEX IF NOT EXISTS index_posts_forum on posts (forum);
+CREATE INDEX IF NOT EXISTS index_posts_thread on posts (thread);
+CREATE INDEX IF NOT EXISTS index_posts_parent on posts (parent);
 
 DROP TABLE IF EXISTS votes CASCADE;
 CREATE TABLE IF NOT EXISTS votes (
