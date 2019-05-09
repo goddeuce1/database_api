@@ -23,7 +23,8 @@ func (a *Application) OpenConnection(input string) {
 
 	a.DB, _ = pgx.NewConnPool(
 		pgx.ConnPoolConfig{
-			ConnConfig: pgxConfig,
+			ConnConfig:     pgxConfig,
+			MaxConnections: 10,
 		})
 
 	if query, err := ioutil.ReadFile("database/sql/items.sql"); err != nil {

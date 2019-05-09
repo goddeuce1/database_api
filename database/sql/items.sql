@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS CITEXT;
 
 DROP TABLE IF EXISTS users CASCADE;
-CREATE TABLE IF NOT EXISTS users (
+CREATE UNLOGGED TABLE IF NOT EXISTS users (
     nickname    CITEXT PRIMARY KEY COLLATE "POSIX",
     email       CITEXT UNIQUE NOT NULL,
     fullname    TEXT NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX users_nickname ON users(nickname);
 
 DROP TABLE IF EXISTS forums CASCADE;
-CREATE TABLE IF NOT EXISTS forums (
+CREATE UNLOGGED TABLE IF NOT EXISTS forums (
     slug        CITEXT PRIMARY KEY,
     posts       INTEGER DEFAULT 0,
     threads     INTEGER DEFAULT 0,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS forums (
 CREATE INDEX forums_slug ON forums(slug);
 
 DROP TABLE IF EXISTS fu_table CASCADE;
-CREATE TABLE IF NOT EXISTS fu_table (
+CREATE UNLOGGED TABLE IF NOT EXISTS fu_table (
     nickname    CITEXT NOT NULL,
     forum       CITEXT NOT NULL,
     CONSTRAINT fu_table_constraint UNIQUE(nickname, forum)
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS fu_table (
 CREATE INDEX fu_table_forum_nickname ON fu_table(forum, nickname);
 
 DROP TABLE IF EXISTS threads CASCADE;
-CREATE TABLE IF NOT EXISTS threads (
+CREATE UNLOGGED TABLE IF NOT EXISTS threads (
     id          SERIAL PRIMARY KEY,
     slug        CITEXT UNIQUE,
     created     TIMESTAMPTZ(3)  DEFAULT now(),
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS threads (
 CREATE INDEX threads_forum_created ON threads(forum, created);
 
 DROP TABLE IF EXISTS posts CASCADE;
-CREATE TABLE IF NOT EXISTS posts (
+CREATE UNLOGGED TABLE IF NOT EXISTS posts (
     id          SERIAL PRIMARY KEY,
     created     TIMESTAMPTZ(3) DEFAULT now(),
     isedited    BOOLEAN DEFAULT FALSE,
@@ -62,7 +62,7 @@ CREATE INDEX posts_thread_parent_id ON posts(thread, parent, id);
 CREATE INDEX posts_thread_id ON posts(thread, id);
 
 DROP TABLE IF EXISTS votes CASCADE;
-CREATE TABLE IF NOT EXISTS votes (
+CREATE UNLOGGED TABLE IF NOT EXISTS votes (
     voice       SMALLINT NOT NULL,
     nickname    CITEXT NOT NULL,
     thread      INTEGER NOT NULL,
