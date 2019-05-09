@@ -1,9 +1,16 @@
 package middlewares
 
+//FCMSelectNick - used for ForumCreateMiddleware as request text
+const FCMSelectNick = `
+	SELECT "nickname"
+	FROM users
+	WHERE "nickname" = $1
+	`
+
 //FCMInsertValues - used for ForumCreateMiddleware as request text
 const FCMInsertValues = `
 	INSERT INTO forums("slug", "title", "user") 
-	VALUES($1, $2, (SELECT "nickname" FROM users WHERE "nickname" = $3))
+	VALUES($1, $2, $3)
 	RETURNING "user", "threads", "posts"
 	`
 
@@ -31,13 +38,13 @@ const FSCMSelectThreadBySlug = `
 //FSCMInsertValues - used for ForumCreateMiddleware as request text
 const FSCMInsertValues = `
 	INSERT INTO threads("author", "forum", "message", "title", "slug", "created") 
-	VALUES($1, (SELECT "slug" FROM forums WHERE "slug" = $2), $3, $4, nullif($5, ''), $6)
-	RETURNING "id", "forum", "votes"
+	VALUES($1, $2, $3, $4, nullif($5, ''), $6)
+	RETURNING "id", "votes"
 	`
 
 //FSTSelectThreadsLSD - used for ForumSlugThreads as request text
 const FSTSelectThreadsLSD = `
-	SELECT "author", "created", "forum", "id", "message", "slug", "title", "votes"
+	SELECT "author", "created", "id", "message", "slug", "title", "votes"
 	FROM threads
 	WHERE "forum" = $1 AND $2 >= "created"
 	ORDER BY "created" DESC
@@ -46,7 +53,7 @@ const FSTSelectThreadsLSD = `
 
 //FSTSelectThreadsLD - used for ForumSlugThreads as request text
 const FSTSelectThreadsLD = `
-	SELECT "author", "created", "forum", "id", "message", "slug", "title", "votes"
+	SELECT "author", "created", "id", "message", "slug", "title", "votes"
 	FROM threads
 	WHERE "forum" = $1
 	ORDER BY "created" DESC
@@ -55,7 +62,7 @@ const FSTSelectThreadsLD = `
 
 //FSTSelectThreadsLS - used for ForumSlugThreads as request text
 const FSTSelectThreadsLS = `
-	SELECT "author", "created", "forum", "id", "message", "slug", "title", "votes"
+	SELECT "author", "created", "id", "message", "slug", "title", "votes"
 	FROM threads
 	WHERE "forum" = $1 AND $2 <= "created"
 	ORDER BY "created"
@@ -64,7 +71,7 @@ const FSTSelectThreadsLS = `
 
 //FSTSelectThreadsL - used for ForumSlugThreads as request text
 const FSTSelectThreadsL = `
-	SELECT "author", "created", "forum", "id", "message", "slug", "title", "votes"
+	SELECT "author", "created", "id", "message", "slug", "title", "votes"
 	FROM threads
 	WHERE "forum" = $1
 	ORDER BY "created"
@@ -73,7 +80,7 @@ const FSTSelectThreadsL = `
 
 //FSTSelectThreadsSD - used for ForumSlugThreads as request text
 const FSTSelectThreadsSD = `
-	SELECT "author", "created", "forum", "id", "message", "slug", "title", "votes"
+	SELECT "author", "created", "id", "message", "slug", "title", "votes"
 	FROM threads
 	WHERE "forum" = $1 AND $2 >= "created"
 	ORDER BY "created" DESC
@@ -81,7 +88,7 @@ const FSTSelectThreadsSD = `
 
 //FSTSelectThreadsD - used for ForumSlugThreads as request text
 const FSTSelectThreadsD = `
-	SELECT "author", "created", "forum", "id", "message", "slug", "title", "votes"
+	SELECT "author", "created", "id", "message", "slug", "title", "votes"
 	FROM threads
 	WHERE "forum" = $1
 	ORDER BY created DESC
@@ -89,7 +96,7 @@ const FSTSelectThreadsD = `
 
 //FSTSelectThreadsS - used for ForumSlugThreads as request text
 const FSTSelectThreadsS = `
-	SELECT "author", "created", "forum", "id", "message", "slug", "title", "votes"
+	SELECT "author", "created", "id", "message", "slug", "title", "votes"
 	FROM threads
 	WHERE "forum" = $1 AND $2 <= "created"
 	ORDER BY "created"
@@ -97,7 +104,7 @@ const FSTSelectThreadsS = `
 
 //FSTSelectThreads - used for ForumSlugThreads as request text
 const FSTSelectThreads = `
-	SELECT "author", "created", "forum", "id", "message", "slug", "title", "votes"
+	SELECT "author", "created", "id", "message", "slug", "title", "votes"
 	FROM threads
 	WHERE "forum" = $1
 	ORDER BY "created"
@@ -110,102 +117,86 @@ const TCMUpdateForumThreadsCount = `
 	WHERE "slug" = $1
 	`
 
+//TCMInsertToNewTable - insert to fu_table
+const TCMInsertToNewTable = `
+	INSERT INTO fu_table(nickname, forum)
+	VALUES($1, $2)
+	ON CONFLICT ON CONSTRAINT fu_table_constraint DO 
+	NOTHING
+	`
+
 //FSTSelectUsersL - asc limit
 const FSTSelectUsersL = `
-	SELECT "about", "email", "fullname", "nickname"
-	FROM users
-	WHERE "nickname" IN (
-		SELECT "author" FROM threads WHERE "forum" = $1
-		UNION
-		SELECT "author" FROM posts WHERE "forum" = $1
-	)
-	ORDER BY lower("nickname")::bytea
+	SELECT a.about, a.email, a.fullname, a.nickname
+	FROM fu_table b
+	JOIN users a ON a.nickname = b.nickname
+	WHERE b.forum = $1
+	ORDER BY a.nickname
 	LIMIT $2
 	`
 
 //FSTSelectUsersLD - desc limit
 const FSTSelectUsersLD = `
-	SELECT "about", "email", "fullname", "nickname"
-	FROM users
-	WHERE "nickname" IN (
-		SELECT "author" FROM threads WHERE "forum" = $1
-		UNION
-		SELECT "author" FROM posts WHERE "forum" = $1
-	)
-	ORDER BY lower("nickname")::bytea DESC
+	SELECT a.about, a.email, a.fullname, a.nickname
+	FROM fu_table b
+	JOIN users a ON a.nickname = b.nickname
+	WHERE b.forum = $1
+	ORDER BY a.nickname DESC
 	LIMIT $2
 	`
 
 //FSTSelectUsers - asc
 const FSTSelectUsers = `
-	SELECT "about", "email", "fullname", "nickname"
-	FROM users
-	WHERE "nickname" IN (
-		SELECT "author" FROM threads WHERE "forum" = $1
-		UNION
-		SELECT "author" FROM posts WHERE "forum" = $1
-	)
-	ORDER BY lower("nickname")::bytea
+	SELECT a.about, a.email, a.fullname, a.nickname
+	FROM fu_table b
+	JOIN users a ON a.nickname = b.nickname
+	WHERE b.forum = $1
+	ORDER BY a.nickname
 	`
 
 //FSTSelectUsersD - desc
 const FSTSelectUsersD = `
-	SELECT "about", "email", "fullname", "nickname"
-	FROM users
-	WHERE "nickname" IN (
-		SELECT "author" FROM threads WHERE "forum" = $1
-		UNION
-		SELECT "author" FROM posts WHERE "forum" = $1
-	)
-	ORDER BY lower("nickname")::bytea DESC
+	SELECT a.about, a.email, a.fullname, a.nickname
+	FROM fu_table b
+	JOIN users a ON a.nickname = b.nickname
+	WHERE b.forum = $1
+	ORDER BY a.nickname DESC
 	`
 
 //FSTSelectUsersS - asc since
 const FSTSelectUsersS = `
-	SELECT "about", "email", "fullname", "nickname"
-	FROM users
-	WHERE lower("nickname")::bytea > lower($1)::bytea AND "nickname" IN (
-		SELECT "author" FROM threads WHERE "forum" = $2
-		UNION
-		SELECT "author" FROM posts WHERE "forum" = $2
-	)
-	ORDER BY lower("nickname")::bytea
+	SELECT a.about, a.email, a.fullname, a.nickname
+	FROM fu_table b
+	JOIN users a ON a.nickname = b.nickname
+	WHERE a.nickname > $1 AND b.forum = $2
+	ORDER BY a.nickname
 	`
 
 //FSTSelectUsersSD - desc since
 const FSTSelectUsersSD = `
-	SELECT "about", "email", "fullname", "nickname"
-	FROM users
-	WHERE lower("nickname")::bytea < lower($1)::bytea AND "nickname" IN (
-		SELECT "author" FROM threads WHERE "forum" = $2
-		UNION
-		SELECT "author" FROM posts WHERE "forum" = $2
-	)
-	ORDER BY lower("nickname")::bytea DESC
+	SELECT a.about, a.email, a.fullname, a.nickname
+	FROM fu_table b
+	JOIN users a ON a.nickname = b.nickname
+	WHERE a.nickname < $1 AND b.forum = $2
+	ORDER BY a.nickname DESC
 	`
 
 //FSTSelectUsersLS - asc limit since
 const FSTSelectUsersLS = `
-	SELECT "about", "email", "fullname", "nickname"
-	FROM users
-	WHERE lower("nickname")::bytea > lower($1)::bytea AND "nickname" IN (
-		SELECT "author" FROM threads WHERE "forum" = $2
-		UNION
-		SELECT "author" FROM posts WHERE "forum" = $2
-	)
-	ORDER BY lower("nickname")::bytea
+	SELECT a.about, a.email, a.fullname, a.nickname
+	FROM fu_table b
+	JOIN users a ON a.nickname = b.nickname
+	WHERE a.nickname > $1 AND b.forum = $2
+	ORDER BY a.nickname
 	LIMIT $3
 `
 
 //FSTSelectUsersLSD - limit since desc
 const FSTSelectUsersLSD = `
-	SELECT "about", "email", "fullname", "nickname"
-	FROM users
-	WHERE lower("nickname")::bytea < lower($1)::bytea AND "nickname" IN (
-		SELECT "author" FROM threads WHERE "forum" = $2
-		UNION
-		SELECT "author" FROM posts WHERE "forum" = $2
-	)
-	ORDER BY lower("nickname")::bytea DESC
+	SELECT a.about, a.email, a.fullname, a.nickname
+	FROM fu_table b
+	JOIN users a ON a.nickname = b.nickname
+	WHERE a.nickname < $1 AND b.forum = $2
+	ORDER BY a.nickname DESC
 	LIMIT $3
 	`

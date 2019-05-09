@@ -13,13 +13,7 @@ import (
 //ThreadCreate - creates posts for thread
 func ThreadCreate(ctx *fasthttp.RequestCtx) {
 	posts := models.Posts{}
-	err := posts.UnmarshalJSON(ctx.PostBody())
-
-	if err != nil {
-		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
-		ctx.SetBodyString(err.Error())
-		return
-	}
+	posts.UnmarshalJSON(ctx.PostBody())
 
 	thread := ctx.UserValue("slug_or_id").(string)
 
@@ -41,18 +35,13 @@ func ThreadCreate(ctx *fasthttp.RequestCtx) {
 		ctx.Write(result)
 	}
 
+	return
 }
 
 //ThreadVote - sets +-1 rating to thread
 func ThreadVote(ctx *fasthttp.RequestCtx) {
 	vote := models.Vote{}
-	err := vote.UnmarshalJSON(ctx.PostBody())
-
-	if err != nil {
-		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
-		ctx.SetBodyString(err.Error())
-		return
-	}
+	vote.UnmarshalJSON(ctx.PostBody())
 
 	threadSlug := ctx.UserValue("slug_or_id").(string)
 
@@ -67,9 +56,9 @@ func ThreadVote(ctx *fasthttp.RequestCtx) {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
 		result, _ := error.MarshalJSON()
 		ctx.Write(result)
-
 	}
 
+	return
 }
 
 //ThreadDetailsGet - get info about thread by slug/id
@@ -83,23 +72,19 @@ func ThreadDetailsGet(ctx *fasthttp.RequestCtx) {
 		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 
-	} else if err == models.ErrThreadNotFound {
+	} else if err == models.ErrThreadNotFound || err == models.ErrUserNotFound {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
 		result, _ := err.MarshalJSON()
 		ctx.Write(result)
 	}
+
+	return
 }
 
 //ThreadDetailsPost - updates thread info
 func ThreadDetailsPost(ctx *fasthttp.RequestCtx) {
 	threadUpdate := models.ThreadUpdate{}
-	err := threadUpdate.UnmarshalJSON(ctx.PostBody())
-
-	if err != nil {
-		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
-		ctx.SetBodyString(err.Error())
-		return
-	}
+	threadUpdate.UnmarshalJSON(ctx.PostBody())
 
 	threadSlug := ctx.UserValue("slug_or_id").(string)
 
@@ -114,8 +99,9 @@ func ThreadDetailsPost(ctx *fasthttp.RequestCtx) {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
 		result, _ := error.MarshalJSON()
 		ctx.Write(result)
-
 	}
+
+	return
 }
 
 //ThreadPosts - returns thread posts
@@ -137,6 +123,7 @@ func ThreadPosts(ctx *fasthttp.RequestCtx) {
 		mw.SetHeaders(ctx, fasthttp.StatusNotFound)
 		result, _ := error.MarshalJSON()
 		ctx.Write(result)
-
 	}
+
+	return
 }

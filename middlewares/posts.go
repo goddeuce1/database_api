@@ -4,16 +4,16 @@ import (
 	"database/sql"
 	"park_base/park_db/database"
 	"park_base/park_db/models"
-	ops "park_base/park_db/sqlops"
 	"strings"
 )
 
 //PostIDDetailsPostMiddleware - updates post message by id
+//PREPARED
 func PostIDDetailsPostMiddleware(message string, id string) (*models.Post, *models.Error) {
 	post := models.Post{}
 	var value sql.NullInt64
 
-	err := database.App.DB.QueryRow(ops.PIDUUpdateMessage, message, id).Scan(
+	err := database.App.DB.QueryRow("PIDUUpdateMessage", message, id).Scan(
 		&post.Author,
 		&post.Forum,
 		&post.ID,
@@ -36,8 +36,9 @@ func PostIDDetailsPostMiddleware(message string, id string) (*models.Post, *mode
 }
 
 //PostIDDetailsGetMiddleware - returns post by id
+//PREPARED
 func PostIDDetailsGetMiddleware(id, related string) (*map[string]interface{}, *models.Error) {
-	row := database.App.DB.QueryRow(ops.PIDUGetPostByID, id)
+	row := database.App.DB.QueryRow("PIDUGetPostByID", id)
 
 	post := models.Post{}
 
@@ -69,7 +70,7 @@ func PostIDDetailsGetMiddleware(id, related string) (*map[string]interface{}, *m
 	for _, value := range params {
 
 		if value == "forum" {
-			row = database.App.DB.QueryRow(ops.PIDUGetForumByName, post.Forum)
+			row = database.App.DB.QueryRow("PIDUGetForumByName", post.Forum)
 			forum := models.Forum{}
 			err = row.Scan(
 				&forum.Posts,
@@ -87,7 +88,7 @@ func PostIDDetailsGetMiddleware(id, related string) (*map[string]interface{}, *m
 		}
 
 		if value == "user" {
-			row = database.App.DB.QueryRow(ops.PIDUGetUserByName, post.Author)
+			row = database.App.DB.QueryRow("UCMGetByNick", post.Author)
 			user := models.User{}
 			err = row.Scan(
 				&user.About,
@@ -105,7 +106,7 @@ func PostIDDetailsGetMiddleware(id, related string) (*map[string]interface{}, *m
 
 		if value == "thread" {
 
-			row = database.App.DB.QueryRow(ops.PIDUGetThreadByID, post.Thread)
+			row = database.App.DB.QueryRow("PIDUGetThreadByID", post.Thread)
 			thread := models.Thread{}
 
 			err = row.Scan(

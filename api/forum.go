@@ -10,13 +10,7 @@ import (
 //ForumCreate - creates forum
 func ForumCreate(ctx *fasthttp.RequestCtx) {
 	forum := models.Forum{}
-	err := forum.UnmarshalJSON(ctx.PostBody())
-
-	if err != nil {
-		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
-		ctx.SetBodyString(err.Error())
-		return
-	}
+	forum.UnmarshalJSON(ctx.PostBody())
 
 	response, error := mw.ForumCreateMiddleware(&forum)
 
@@ -36,18 +30,14 @@ func ForumCreate(ctx *fasthttp.RequestCtx) {
 		ctx.Write(result)
 	}
 
+	return
+
 }
 
 //ForumSlugCreate - create thread
 func ForumSlugCreate(ctx *fasthttp.RequestCtx) {
 	thread := models.Thread{}
-	err := thread.UnmarshalJSON(ctx.PostBody())
-
-	if err != nil {
-		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
-		ctx.SetBodyString(err.Error())
-		return
-	}
+	thread.UnmarshalJSON(ctx.PostBody())
 
 	slug := ctx.UserValue("slug").(string)
 	response, error := mw.ForumSlugCreateMiddleware(&thread, slug)
@@ -77,6 +67,8 @@ func ForumSlugCreate(ctx *fasthttp.RequestCtx) {
 		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 	}
+
+	return
 }
 
 //ForumSlugDetails - returns forum details by slug
@@ -95,6 +87,8 @@ func ForumSlugDetails(ctx *fasthttp.RequestCtx) {
 		result, _ := err.MarshalJSON()
 		ctx.Write(result)
 	}
+
+	return
 }
 
 //ForumSlugThreads - returns threads from forum by slug
@@ -117,6 +111,8 @@ func ForumSlugThreads(ctx *fasthttp.RequestCtx) {
 		result, _ := err.MarshalJSON()
 		ctx.Write(result)
 	}
+
+	return
 }
 
 //ForumSlugUsers - returns users limit/desc/since
@@ -140,4 +136,5 @@ func ForumSlugUsers(ctx *fasthttp.RequestCtx) {
 		ctx.Write(result)
 	}
 
+	return
 }

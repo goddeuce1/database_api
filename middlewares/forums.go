@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"park_base/park_db/models"
-	ops "park_base/park_db/sqlops"
 	"strconv"
 
 	"park_base/park_db/database"
@@ -11,85 +10,86 @@ import (
 )
 
 //ForumCreateMiddleware - creates forum
+//PREPARED
 func ForumCreateMiddleware(forum *models.Forum) (*models.Forum, *models.Error) {
-	err := database.App.DB.QueryRow(ops.FCMInsertValues, forum.Slug, forum.Title, forum.User).Scan(&forum.User, &forum.Threads, &forum.Posts)
+	err := database.App.DB.QueryRow("FCMSelectNick", forum.User).Scan(&forum.User)
 
 	if err != nil {
-		switch err.(pgx.PgError).Code {
-		case "23502":
-			return nil, models.ErrForumOwnerNotFound
-		case "23503":
-			return nil, models.ErrForumOwnerNotFound
-		case "23505":
-			dublicateForum, _ := ForumSlugDetailsMiddleware(forum.Slug)
-			return dublicateForum, models.ErrForumAlreadyExists
-		}
+		return nil, models.ErrForumOwnerNotFound
+	}
+
+	err = database.App.DB.QueryRow("FCMInsertValues", forum.Slug, forum.Title, forum.User).Scan(
+		&forum.User,
+		&forum.Threads,
+		&forum.Posts)
+
+	if err != nil {
+		dublicateForum, _ := ForumSlugDetailsMiddleware(forum.Slug)
+		return dublicateForum, models.ErrForumAlreadyExists
 	}
 
 	return forum, nil
 }
 
 //ForumSlugCreateMiddleware - create thread
+//PREPARED
 func ForumSlugCreateMiddleware(thread *models.Thread, forum string) (models.Threads, *models.Error) {
-	err := database.App.DB.QueryRow(
-		ops.FSCMInsertValues,
+	err := database.App.DB.QueryRow("FSCMSelectForumBySlug", forum).Scan(&thread.Forum)
+
+	if err != nil {
+		return nil, models.ErrForumOrAuthorNotFound
+	}
+
+	err = database.App.DB.QueryRow("FCMSelectNick", thread.Author).Scan(&thread.Author)
+
+	if err != nil {
+		return nil, models.ErrForumOrAuthorNotFound
+	}
+
+	err = database.App.DB.QueryRow(
+		"FSCMInsertValues",
 		thread.Author,
-		forum,
+		thread.Forum,
 		thread.Message,
 		thread.Title,
 		thread.Slug,
 		thread.Created,
-	).Scan(&thread.ID, &thread.Forum, &thread.Votes)
-
-	if err == nil {
-		_, _ = database.App.DB.Exec(
-			ops.TCMUpdateForumThreadsCount,
-			thread.Forum,
-		)
-
-		threads := models.Threads{}
-		threads = append(threads, thread)
-
-		return threads, nil
-	}
+	).Scan(&thread.ID, &thread.Votes)
 
 	if err != nil {
+		conflictThreads := models.Threads{}
+		conflictThread := models.Thread{}
 
-		switch err.(pgx.PgError).Code {
-		case "23502":
-			return nil, models.ErrForumOrAuthorNotFound
-		case "23503":
-			return nil, models.ErrForumOrAuthorNotFound
-		case "23505":
-			conflictThreads := models.Threads{}
-			conflictThread := models.Thread{}
+		row := database.App.DB.QueryRow("TFBySlug", thread.Slug)
+		_ = row.Scan(
+			&conflictThread.Author,
+			&conflictThread.Created,
+			&conflictThread.Forum,
+			&conflictThread.ID,
+			&conflictThread.Message,
+			&conflictThread.Slug,
+			&conflictThread.Title,
+			&conflictThread.Votes,
+		)
 
-			row := database.App.DB.QueryRow(ops.FSCMSelectThreadBySlug, thread.Slug)
-			err = row.Scan(
-				&conflictThread.Author,
-				&conflictThread.Created,
-				&conflictThread.Forum,
-				&conflictThread.ID,
-				&conflictThread.Message,
-				&conflictThread.Slug,
-				&conflictThread.Title,
-				&conflictThread.Votes,
-			)
-
-			if err == nil {
-				conflictThreads = append(conflictThreads, &conflictThread)
-				return conflictThreads, models.ErrThreadAlreadyExists
-			}
-		}
+		conflictThreads = append(conflictThreads, &conflictThread)
+		return conflictThreads, models.ErrThreadAlreadyExists
 	}
 
-	return nil, models.ErrGlobal
+	database.App.DB.Exec("TCMUpdateForumThreadsCount", thread.Forum)
+	database.App.DB.Exec("TCMInsertToNewTable", thread.Author, thread.Forum)
+
+	threads := models.Threads{}
+	threads = append(threads, thread)
+
+	return threads, nil
 }
 
 //ForumSlugDetailsMiddleware - returns forum details by slug
+//PREPARED
 func ForumSlugDetailsMiddleware(slug string) (*models.Forum, *models.Error) {
 	forum := models.Forum{}
-	rows := database.App.DB.QueryRow(ops.FSDGetValues, slug)
+	rows := database.App.DB.QueryRow("FSDGetValues", slug)
 
 	err := rows.Scan(&forum.Posts, &forum.Slug, &forum.Threads, &forum.Title, &forum.User)
 
@@ -101,7 +101,16 @@ func ForumSlugDetailsMiddleware(slug string) (*models.Forum, *models.Error) {
 }
 
 //ForumSlugThreadsMiddleware - returns threads from forum by slug
+//PREPARED
 func ForumSlugThreadsMiddleware(limit, since, desc, slug string) (models.Threads, *models.Error) {
+	var forumSlug string
+
+	err := database.App.DB.QueryRow("FSCMSelectForumBySlug", slug).Scan(&forumSlug)
+
+	if err != nil {
+		return nil, models.ErrForumNotFound
+	}
+
 	var rows *pgx.Rows
 
 	if _, error := strconv.Atoi(limit); error == nil {
@@ -109,17 +118,17 @@ func ForumSlugThreadsMiddleware(limit, since, desc, slug string) (models.Threads
 		if desc == "true" {
 
 			if len(since) != 0 {
-				rows, _ = database.App.DB.Query(ops.FSTSelectThreadsLSD, slug, since, limit)
+				rows, _ = database.App.DB.Query("FSTSelectThreadsLSD", slug, since, limit)
 			} else {
-				rows, _ = database.App.DB.Query(ops.FSTSelectThreadsLD, slug, limit)
+				rows, _ = database.App.DB.Query("FSTSelectThreadsLD", slug, limit)
 			}
 
 		} else {
 
 			if len(since) != 0 {
-				rows, _ = database.App.DB.Query(ops.FSTSelectThreadsLS, slug, since, limit)
+				rows, _ = database.App.DB.Query("FSTSelectThreadsLS", slug, since, limit)
 			} else {
-				rows, _ = database.App.DB.Query(ops.FSTSelectThreadsL, slug, limit)
+				rows, _ = database.App.DB.Query("FSTSelectThreadsL", slug, limit)
 			}
 
 		}
@@ -129,18 +138,18 @@ func ForumSlugThreadsMiddleware(limit, since, desc, slug string) (models.Threads
 		if desc == "true" {
 
 			if len(since) != 0 {
-				rows, _ = database.App.DB.Query(ops.FSTSelectThreadsSD, slug, since)
+				rows, _ = database.App.DB.Query("FSTSelectThreadsSD", slug, since)
 			} else {
-				rows, _ = database.App.DB.Query(ops.FSTSelectThreadsD, slug)
+				rows, _ = database.App.DB.Query("FSTSelectThreadsD", slug)
 			}
 
 		} else {
 
 			if len(since) != 0 {
-				rows, _ = database.App.DB.Query(ops.FSTSelectThreadsS, slug, since)
+				rows, _ = database.App.DB.Query("FSTSelectThreadsS", slug, since)
 
 			} else {
-				rows, _ = database.App.DB.Query(ops.FSTSelectThreads, slug)
+				rows, _ = database.App.DB.Query("FSTSelectThreads", slug)
 			}
 
 		}
@@ -153,34 +162,34 @@ func ForumSlugThreadsMiddleware(limit, since, desc, slug string) (models.Threads
 
 	for rows.Next() {
 		thread := models.Thread{}
+		thread.Forum = forumSlug
+
 		_ = rows.Scan(
 			&thread.Author,
 			&thread.Created,
-			&thread.Forum,
 			&thread.ID,
 			&thread.Message,
 			&thread.Slug,
 			&thread.Title,
 			&thread.Votes,
 		)
+
 		threads = append(threads, &thread)
-	}
-
-	if len(threads) == 0 {
-		var slugString string
-		_ = database.App.DB.QueryRow(ops.FSCMSelectForumBySlug, slug).Scan(&slugString)
-
-		if slugString == "" {
-			return nil, models.ErrForumNotFound
-		}
-
 	}
 
 	return threads, nil
 }
 
 //ForumSlugUsersMiddleware - returns users
+//PREPARED
 func ForumSlugUsersMiddleware(limit, since, desc, slug string) (models.Users, *models.Error) {
+	var slugString string
+	err := database.App.DB.QueryRow("FSCMSelectForumBySlug", slug).Scan(&slugString)
+
+	if err != nil {
+		return nil, models.ErrForumNotFound
+	}
+
 	var rows *pgx.Rows
 
 	if _, error := strconv.Atoi(limit); error == nil {
@@ -188,17 +197,17 @@ func ForumSlugUsersMiddleware(limit, since, desc, slug string) (models.Users, *m
 		if desc == "true" {
 
 			if len(since) != 0 {
-				rows, _ = database.App.DB.Query(ops.FSTSelectUsersLSD, since, slug, limit)
+				rows, _ = database.App.DB.Query("FSTSelectUsersLSD", since, slug, limit)
 			} else {
-				rows, _ = database.App.DB.Query(ops.FSTSelectUsersLD, slug, limit)
+				rows, _ = database.App.DB.Query("FSTSelectUsersLD", slug, limit)
 			}
 
 		} else {
 
 			if len(since) != 0 {
-				rows, _ = database.App.DB.Query(ops.FSTSelectUsersLS, since, slug, limit)
+				rows, _ = database.App.DB.Query("FSTSelectUsersLS", since, slug, limit)
 			} else {
-				rows, _ = database.App.DB.Query(ops.FSTSelectUsersL, slug, limit)
+				rows, _ = database.App.DB.Query("FSTSelectUsersL", slug, limit)
 			}
 
 		}
@@ -208,18 +217,18 @@ func ForumSlugUsersMiddleware(limit, since, desc, slug string) (models.Users, *m
 		if desc == "true" {
 
 			if len(since) != 0 {
-				rows, _ = database.App.DB.Query(ops.FSTSelectUsersSD, since, slug)
+				rows, _ = database.App.DB.Query("FSTSelectUsersSD", since, slug)
 			} else {
-				rows, _ = database.App.DB.Query(ops.FSTSelectUsersD, slug)
+				rows, _ = database.App.DB.Query("FSTSelectUsersD", slug)
 			}
 
 		} else {
 
 			if len(since) != 0 {
-				rows, _ = database.App.DB.Query(ops.FSTSelectUsersS, since, slug)
+				rows, _ = database.App.DB.Query("FSTSelectUsersS", since, slug)
 
 			} else {
-				rows, _ = database.App.DB.Query(ops.FSTSelectUsers, slug)
+				rows, _ = database.App.DB.Query("FSTSelectUsers", slug)
 			}
 
 		}
@@ -232,6 +241,7 @@ func ForumSlugUsersMiddleware(limit, since, desc, slug string) (models.Users, *m
 
 	for rows.Next() {
 		user := models.User{}
+
 		_ = rows.Scan(
 			&user.About,
 			&user.Email,
@@ -240,16 +250,6 @@ func ForumSlugUsersMiddleware(limit, since, desc, slug string) (models.Users, *m
 		)
 
 		users = append(users, &user)
-	}
-
-	if len(users) == 0 {
-		var slugString string
-		_ = database.App.DB.QueryRow(ops.FSCMSelectForumBySlug, slug).Scan(&slugString)
-
-		if slugString == "" {
-			return nil, models.ErrForumNotFound
-		}
-
 	}
 
 	return users, nil

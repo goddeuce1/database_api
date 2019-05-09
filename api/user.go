@@ -11,14 +11,10 @@ import (
 //UserCreate - creates user
 func UserCreate(ctx *fasthttp.RequestCtx) {
 	user := models.User{}
-	err := user.UnmarshalJSON(ctx.PostBody())
+	user.UnmarshalJSON(ctx.PostBody())
+
 	user.Nickname = ctx.UserValue("nickname").(string)
 
-	if err != nil {
-		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
-		ctx.SetBodyString(err.Error())
-		return
-	}
 	response, error := mw.UserCreateMiddleware(&user)
 
 	if error == nil {
@@ -31,6 +27,8 @@ func UserCreate(ctx *fasthttp.RequestCtx) {
 		result, _ := response.MarshalJSON()
 		ctx.Write(result)
 	}
+
+	return
 }
 
 //UserProfileGet - returns desired user
@@ -48,20 +46,16 @@ func UserProfileGet(ctx *fasthttp.RequestCtx) {
 		result, _ := err.MarshalJSON()
 		ctx.Write(result)
 	}
+
+	return
 }
 
 //UserProfilePost - returns new user settings
 func UserProfilePost(ctx *fasthttp.RequestCtx) {
 	user := models.User{}
-	err := user.UnmarshalJSON(ctx.PostBody())
+	user.UnmarshalJSON(ctx.PostBody())
 
 	user.Nickname = ctx.UserValue("nickname").(string)
-
-	if err != nil {
-		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
-		ctx.SetBodyString(err.Error())
-		return
-	}
 
 	returnUser, error := mw.UserProfilePostMiddleware(&user)
 
@@ -79,4 +73,6 @@ func UserProfilePost(ctx *fasthttp.RequestCtx) {
 		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 	}
+
+	return
 }

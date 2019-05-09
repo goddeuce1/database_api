@@ -95,7 +95,7 @@ const TDPUpdateMessageID = `
 	"message" = coalesce(nullif($1, ''), "message"),
 	"title" = coalesce(nullif($2, ''), "title")
 	WHERE "id" = $3
-	RETURNING "author", "created", "forum", "id", "message", "slug", "title", "votes"
+	RETURNING "message", "title"
 	`
 
 //TDPUpdateMessageSlug - updates thread message
@@ -128,14 +128,14 @@ const TPSinceDescLimitTree = `
 const TPSinceDescLimitParentTree = `
 	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
-	WHERE path[1] IN (
-		SELECT "id"
-		FROM posts
-		WHERE "thread" = $1 AND "parent" IS NULL AND "id" < (SELECT path[1] FROM posts WHERE "id" = $2)
-		ORDER BY "id" DESC
+	WHERE "thread" = $1 AND path[1] IN (
+		SELECT p1.path[1] 
+		FROM posts p1
+		WHERE p1.thread = $1 AND p1.parent IS NULL AND p1.path[1] < (SELECT p2.path[1] FROM posts p2 WHERE p2.id = $2) 
+		ORDER BY p1.path DESC 
 		LIMIT $3
-	)
-	ORDER BY "path"
+		) 
+	ORDER BY path[1] DESC, "path";
 	`
 
 //TPSinceDescLimitFlat - since desc limit flat
@@ -160,13 +160,14 @@ const TPSinceAscLimitTree = `
 const TPSinceAscLimitParentTree = `
 	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
-	WHERE path[1] IN (
-		SELECT "id"
-		FROM posts
-		WHERE "thread" = $1 AND "parent" IS NULL AND "id" > (SELECT path[1] FROM posts WHERE "id" = $2)
-		ORDER BY "id" LIMIT $3
-	)
-	ORDER BY "path"
+	WHERE "thread" = $1 AND path[1] IN (
+		SELECT p1.path[1] 
+		FROM posts p1
+		WHERE p1.thread = $1 AND p1.parent IS NULL AND p1.path[1] > (SELECT p2.path[1] FROM posts p2 WHERE p2.id = $2) 
+		ORDER BY p1.path
+		LIMIT $3
+		) 
+	ORDER BY "path";
 	`
 
 //TPSinceAscLimitFlat - since asc limit flat
@@ -192,11 +193,10 @@ const TPDescLimitParentTree = `
 	SELECT "id", "author", "parent", "message", "forum", "thread", "created", "isedited"
 	FROM posts
 	WHERE "thread" = $1 AND path[1] IN (
-		SELECT path[1]
-		FROM posts
-		WHERE "thread" = $1
-		GROUP BY path[1]
-		ORDER BY path[1] DESC
+		SELECT p1.path[1]
+		FROM posts p1
+		WHERE p1.thread = $1 AND p1.parent IS NULL
+		ORDER BY p1.path[1] DESC
 		LIMIT $2
 	)
 	ORDER BY path[1] DESC, "path"

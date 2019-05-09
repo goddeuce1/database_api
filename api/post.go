@@ -11,13 +11,7 @@ import (
 //PostIDDetailsPost - updates post info
 func PostIDDetailsPost(ctx *fasthttp.RequestCtx) {
 	postUpdate := models.PostUpdate{}
-	err := postUpdate.UnmarshalJSON(ctx.PostBody())
-
-	if err != nil {
-		mw.SetHeaders(ctx, fasthttp.StatusBadRequest)
-		ctx.SetBodyString(err.Error())
-		return
-	}
+	postUpdate.UnmarshalJSON(ctx.PostBody())
 
 	postID := ctx.UserValue("id").(string)
 	response, error := mw.PostIDDetailsPostMiddleware(postUpdate.Message, postID)
@@ -33,6 +27,7 @@ func PostIDDetailsPost(ctx *fasthttp.RequestCtx) {
 		ctx.Write(result)
 	}
 
+	return
 }
 
 //PostIDDetailsGet - get post by its id
@@ -51,4 +46,6 @@ func PostIDDetailsGet(ctx *fasthttp.RequestCtx) {
 		result, _ := error.MarshalJSON()
 		ctx.Write(result)
 	}
+
+	return
 }

@@ -3,7 +3,6 @@ package middlewares
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"park_base/park_db/database"
 	"park_base/park_db/models"
 	ops "park_base/park_db/sqlops"
@@ -14,6 +13,7 @@ import (
 )
 
 //ThreadCreateMiddleware - create posts for thread
+//PREPARED
 func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *models.Error) {
 	result, errorThread := ThreadDetailsGetMiddleware(thread)
 
@@ -32,7 +32,7 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 	for index, post := range posts {
 
 		if post.Parent != 0 {
-			row := database.App.DB.QueryRow(ops.TCMFindPostByParent, post.Parent, result.ID)
+			row := database.App.DB.QueryRow("TCMFindPostByParent", post.Parent, result.ID)
 			parent := 0
 			errorParent := row.Scan(&parent)
 
@@ -68,6 +68,10 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 	newposts := models.Posts{}
 	flag := false
 
+	queryUsers := strings.Builder{}
+	queryUsers.WriteString("INSERT INTO fu_table(nickname, forum) VALUES")
+
+	i := 0
 	for rows.Next() {
 		post := models.Post{}
 		var value sql.NullInt64
@@ -86,19 +90,26 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 			post.Parent = value.Int64
 		}
 
+		queryUsers.WriteString(fmt.Sprintf("('%s', '%s')", post.Author, post.Forum))
+
+		if i < len(posts)-1 {
+			queryUsers.WriteString(", ")
+		}
+
 		newposts = append(newposts, &post)
+		i++
 
 		if post.ID == 1500000 {
-			log.Println("vacuum will be")
 			flag = true
 		}
 
 	}
 
-	database.App.DB.Exec(ops.TCMUpdateForumPostsCount, len(newposts), result.Forum)
+	queryUsers.WriteString("ON CONFLICT ON CONSTRAINT fu_table_constraint DO NOTHING")
+	database.App.DB.Exec("TCMUpdateForumPostsCount", len(newposts), result.Forum)
+	database.App.DB.Exec(queryUsers.String())
 
 	if flag {
-		log.Println("vacuum now!")
 		database.App.DB.Exec("VACUUM ANALYZE")
 	}
 
@@ -106,34 +117,36 @@ func ThreadCreateMiddleware(posts models.Posts, thread string) (models.Posts, *m
 }
 
 //ThreadSlugVoteMiddleware - +-1 vote for thread
+//PREPARED
 func ThreadSlugVoteMiddleware(vote *models.Vote, slug string) (*models.Thread, *models.Error) {
-	var err error
-
-	if id, error := strconv.Atoi(slug); error == nil {
-		err = database.App.DB.QueryRow(ops.TSVoteByID, vote.Voice, vote.Nickname, id).Scan(&vote.Voice)
-	} else {
-		err = database.App.DB.QueryRow(ops.TSVoteBySlug, vote.Voice, vote.Nickname, slug).Scan(&vote.Voice)
+	thread, err := ThreadDetailsGetMiddleware(slug)
+	if err != nil {
+		return nil, models.ErrThreadNotFound
 	}
+
+	_, err = UserProfileGetMiddleware(vote.Nickname)
 
 	if err != nil {
-		switch err.(pgx.PgError).Code {
-		case "23503":
-			return nil, models.ErrThreadNotFound
-		}
+		return nil, models.ErrUserNotFound
 	}
 
-	return ThreadDetailsGetMiddleware(slug)
+	_ = database.App.DB.QueryRow("TSVoteByID", vote.Voice, vote.Nickname, thread.ID).Scan(&vote.Voice)
+
+	id := strconv.FormatInt(thread.ID, 10)
+
+	return ThreadDetailsGetMiddleware(id)
 }
 
 //ThreadDetailsGetMiddleware - get info about thread by slug/id
+//PREPARED
 func ThreadDetailsGetMiddleware(slug string) (*models.Thread, *models.Error) {
 	thread := models.Thread{}
 	var row *pgx.Row
 
 	if id, error := strconv.Atoi(slug); error == nil {
-		row = database.App.DB.QueryRow(ops.TFByID, id)
+		row = database.App.DB.QueryRow("TFByID", id)
 	} else {
-		row = database.App.DB.QueryRow(ops.TFBySlug, slug)
+		row = database.App.DB.QueryRow("TFBySlug", slug)
 	}
 
 	err := row.Scan(
@@ -155,40 +168,26 @@ func ThreadDetailsGetMiddleware(slug string) (*models.Thread, *models.Error) {
 }
 
 //ThreadDetailsPostMiddleware - updates thread info
+//PREPARED
 func ThreadDetailsPostMiddleware(threadUpdate *models.ThreadUpdate, slug string) (*models.Thread, *models.Error) {
-	var row *pgx.Row
-
-	if id, errorConvert := strconv.Atoi(slug); errorConvert == nil {
-		row = database.App.DB.QueryRow(ops.TDPUpdateMessageID, threadUpdate.Message, threadUpdate.Title, id)
-	} else {
-		row = database.App.DB.QueryRow(ops.TDPUpdateMessageSlug, threadUpdate.Message, threadUpdate.Title, slug)
-	}
-
-	thread := models.Thread{}
-
-	err := row.Scan(
-		&thread.Author,
-		&thread.Created,
-		&thread.Forum,
-		&thread.ID,
-		&thread.Message,
-		&thread.Slug,
-		&thread.Title,
-		&thread.Votes,
-	)
+	thread, err := ThreadDetailsGetMiddleware(slug)
 
 	if err != nil {
-
-		if err.Error() == "no rows in result set" {
-			return nil, models.ErrThreadNotFound
-		}
-
+		return nil, models.ErrThreadNotFound
 	}
 
-	return &thread, nil
+	row := database.App.DB.QueryRow(ops.TDPUpdateMessageID, threadUpdate.Message, threadUpdate.Title, thread.ID)
+
+	_ = row.Scan(
+		&thread.Message,
+		&thread.Title,
+	)
+
+	return thread, nil
 }
 
 //ThreadPostsMiddleware - returns thread posts
+//PREPARED
 func ThreadPostsMiddleware(slug, limit, since, sort, desc string) (*models.Posts, *models.Error) {
 	thread, err := ThreadDetailsGetMiddleware(slug)
 
@@ -202,40 +201,40 @@ func ThreadPostsMiddleware(slug, limit, since, sort, desc string) (*models.Posts
 		if desc == "true" {
 			switch string(sort) {
 			case "tree":
-				rows, _ = database.App.DB.Query(ops.TPSinceDescLimitTree, thread.ID, since, limit)
+				rows, _ = database.App.DB.Query("TPSinceDescLimitTree", thread.ID, since, limit)
 			case "parent_tree":
-				rows, _ = database.App.DB.Query(ops.TPSinceDescLimitParentTree, thread.ID, since, limit)
+				rows, _ = database.App.DB.Query("TPSinceDescLimitParentTree", thread.ID, since, limit)
 			default:
-				rows, _ = database.App.DB.Query(ops.TPSinceDescLimitFlat, thread.ID, since, limit)
+				rows, _ = database.App.DB.Query("TPSinceDescLimitFlat", thread.ID, since, limit)
 			}
 		} else {
 			switch string(sort) {
 			case "tree":
-				rows, _ = database.App.DB.Query(ops.TPSinceAscLimitTree, thread.ID, since, limit)
+				rows, _ = database.App.DB.Query("TPSinceAscLimitTree", thread.ID, since, limit)
 			case "parent_tree":
-				rows, _ = database.App.DB.Query(ops.TPSinceAscLimitParentTree, thread.ID, since, limit)
+				rows, _ = database.App.DB.Query("TPSinceAscLimitParentTree", thread.ID, since, limit)
 			default:
-				rows, _ = database.App.DB.Query(ops.TPSinceAscLimitFlat, thread.ID, since, limit)
+				rows, _ = database.App.DB.Query("TPSinceAscLimitFlat", thread.ID, since, limit)
 			}
 		}
 	} else {
 		if desc == "true" {
 			switch string(sort) {
 			case "tree":
-				rows, _ = database.App.DB.Query(ops.TPDescLimitTree, thread.ID, limit)
+				rows, _ = database.App.DB.Query("TPDescLimitTree", thread.ID, limit)
 			case "parent_tree":
-				rows, _ = database.App.DB.Query(ops.TPDescLimitParentTree, thread.ID, limit)
+				rows, _ = database.App.DB.Query("TPDescLimitParentTree", thread.ID, limit)
 			default:
-				rows, _ = database.App.DB.Query(ops.TPDescLimitFlat, thread.ID, limit)
+				rows, _ = database.App.DB.Query("TPDescLimitFlat", thread.ID, limit)
 			}
 		} else {
 			switch string(sort) {
 			case "tree":
-				rows, _ = database.App.DB.Query(ops.TPAscLimitTree, thread.ID, limit)
+				rows, _ = database.App.DB.Query("TPAscLimitTree", thread.ID, limit)
 			case "parent_tree":
-				rows, _ = database.App.DB.Query(ops.TPAscLimitParentTree, thread.ID, limit)
+				rows, _ = database.App.DB.Query("TPAscLimitParentTree", thread.ID, limit)
 			default:
-				rows, _ = database.App.DB.Query(ops.TPAscLimitFlat, thread.ID, limit)
+				rows, _ = database.App.DB.Query("TPAscLimitFlat", thread.ID, limit)
 			}
 		}
 	}
